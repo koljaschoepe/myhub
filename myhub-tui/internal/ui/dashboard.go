@@ -4,6 +4,8 @@ package ui
 import (
 	"context"
 	"fmt"
+	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -16,6 +18,7 @@ import (
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/launch"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/projects"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/theme"
+	"github.com/koljaschoepe/myhub/myhub-tui/internal/watcher"
 )
 
 // Screen is a top-level view the dashboard can render.
@@ -50,6 +53,15 @@ type Model struct {
 	// dashboard is rendering normally.
 	onboarding *Onboarding
 
+	// watch is the fsnotify-backed auto-compile watcher (nil if startup
+	// failed). Lives for the TUI's lifetime; closed in ScreenQuit.
+	watch *watcher.Watcher
+
+	// compileRunning avoids overlapping compiles when the watcher fires
+	// during an already-running pass. New events replace the in-flight
+	// trigger — the compiler is idempotent on no-change.
+	compileRunning bool
+
 	// notice surfaces transient feedback ("zurück aus projekt X", "lazygit
 	// nicht verdrahtet"). Cleared on next keypress.
 	notice string
@@ -63,6 +75,16 @@ type gitInfoMsg struct {
 
 // briefReadyMsg is delivered when the briefer agent returns (or times out).
 type briefReadyMsg struct{ brief briefer.Brief }
+
+// watcherTickMsg is delivered when the fsnotify watcher's debounce fires.
+// Carries the paths that changed so the UI can show a useful notice.
+type watcherTickMsg struct{ event watcher.Event }
+
+// compileDoneMsg is delivered when a background compile finishes.
+type compileDoneMsg struct {
+	err      error
+	duration time.Duration
+}
 
 // New loads (or initializes) the registry, scans the filesystem, persists
 // the merged view, loads memory/config.toml (for name/TTS prefs), and
@@ -85,6 +107,13 @@ func New(myhubRoot, userName string) (Model, error) {
 		cfg = &config.Config{}
 	}
 
+	// Spin up the watcher. Failure is non-fatal — if fsnotify can't start,
+	// the dashboard still works; auto-compile just won't fire.
+	w, werr := watcher.New(filepath.Join(myhubRoot, "content"), 30*time.Second)
+	if werr == nil {
+		_ = w.Start()
+	}
+
 	m := Model{
 		MyhubRoot: myhubRoot,
 		UserName:  firstNonEmpty(userName, cfg.User.Name),
@@ -92,6 +121,7 @@ func New(myhubRoot, userName string) (Model, error) {
 		gitInfo:   map[string]projects.GitInfo{},
 		screen:    ScreenMain,
 		TTSVoice:  briefer.DefaultVoice,
+		watch:     w,
 	}
 	if cfg.TTS.Voice != "" {
 		m.TTSVoice = cfg.TTS.Voice
@@ -119,14 +149,62 @@ func firstNonEmpty(a, b string) string {
 	return b
 }
 
-// Init kicks off per-project git-info fetches AND the briefer invocation
-// in parallel. Each returns an independent message so the UI populates
-// progressively as results arrive.
+// Init kicks off per-project git-info fetches, the briefer invocation,
+// and the watcher subscription in parallel. Each returns an independent
+// message so the UI populates progressively as results arrive.
 func (m Model) Init() tea.Cmd {
-	return tea.Batch(
+	cmds := []tea.Cmd{
 		m.refreshAllGitInfo(),
 		m.runBriefer(),
-	)
+	}
+	if m.watch != nil {
+		cmds = append(cmds, m.waitWatcher())
+	}
+	return tea.Batch(cmds...)
+}
+
+// waitWatcher blocks on one watcher event, then yields a watcherTickMsg.
+// Model re-issues this command after handling the tick, keeping the
+// subscription alive for the lifetime of the TUI.
+func (m Model) waitWatcher() tea.Cmd {
+	if m.watch == nil {
+		return nil
+	}
+	ch := m.watch.Events()
+	return func() tea.Msg {
+		ev, ok := <-ch
+		if !ok {
+			return nil
+		}
+		return watcherTickMsg{event: ev}
+	}
+}
+
+// triggerCompile runs `claude -p --agent compiler "run incremental compile"`
+// in the background and reports completion as compileDoneMsg.
+func (m Model) triggerCompile() tea.Cmd {
+	root := m.MyhubRoot
+	return func() tea.Msg {
+		start := time.Now()
+		bin, err := launch.Check(root)
+		if err != nil {
+			return compileDoneMsg{err: err, duration: time.Since(start)}
+		}
+		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Minute)
+		defer cancel()
+		cmd := exec.CommandContext(ctx, bin,
+			"-p", "--agent", "compiler",
+			"--output-format", "text",
+			"run incremental compile",
+		)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(),
+			"CLAUDE_CONFIG_DIR="+filepath.Join(root, ".claude"),
+			"MYHUB_ROOT="+root,
+		)
+		runErr := cmd.Run()
+		return compileDoneMsg{err: runErr, duration: time.Since(start)}
+	}
 }
 
 // runBriefer returns a cmd that invokes `claude -p --agent briefer`
@@ -186,6 +264,26 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		briefer.Speak(m.brief.Text, m.TTSVoice)
 		return m, nil
 
+	case watcherTickMsg:
+		// Kick off a compile unless one is already running. Re-subscribe
+		// so we keep hearing from the watcher.
+		cmds := []tea.Cmd{m.waitWatcher()}
+		if !m.compileRunning {
+			m.compileRunning = true
+			m.notice = fmt.Sprintf("wiki compile getriggert (%d Datei-Änderung(en))", len(msg.event.Paths))
+			cmds = append(cmds, m.triggerCompile())
+		}
+		return m, tea.Batch(cmds...)
+
+	case compileDoneMsg:
+		m.compileRunning = false
+		if msg.err != nil {
+			m.notice = fmt.Sprintf("wiki compile fehlgeschlagen: %s", msg.err)
+		} else {
+			m.notice = fmt.Sprintf("wiki compile fertig in %s.", msg.duration.Round(time.Millisecond))
+		}
+		return m, nil
+
 	case launch.ClaudeExitedMsg:
 		return m.handleClaudeExit(msg)
 
@@ -242,6 +340,9 @@ func (m Model) handleKey(k tea.KeyMsg) (Model, tea.Cmd) {
 	switch k.String() {
 	case "q", "ctrl+c", "ctrl+d":
 		m.quitting = true
+		if m.watch != nil {
+			_ = m.watch.Stop()
+		}
 		return m, tea.Quit
 	case "?":
 		m.notice = m.helpText()
