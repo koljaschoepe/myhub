@@ -10,6 +10,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/koljaschoepe/myhub/myhub-tui/internal/launch"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/projects"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/theme"
 )
@@ -35,8 +36,8 @@ type Model struct {
 	width, height int
 	quitting      bool
 
-	// pending action surfaced to the user after a key press — cleared on
-	// next input. Phase 1D replaces this with tea.ExecProcess launches.
+	// notice surfaces transient feedback ("zurück aus projekt X", "lazygit
+	// nicht verdrahtet"). Cleared on next keypress.
 	notice string
 }
 
@@ -46,9 +47,8 @@ type gitInfoMsg struct {
 	info projects.GitInfo
 }
 
-// New wires up the model for the given SSD root + optional user name.
-// It loads (or initializes) the project registry, scans the filesystem, and
-// persists the merged view — so subsequent mounts see the same order.
+// New loads (or initializes) the registry, scans the filesystem, persists
+// the merged view, and returns a ready-to-run Model.
 func New(myhubRoot, userName string) (Model, error) {
 	regPath := filepath.Join(myhubRoot, "memory", "projects.yaml")
 	reg, err := projects.LoadRegistry(regPath)
@@ -56,7 +56,6 @@ func New(myhubRoot, userName string) (Model, error) {
 		return Model{}, fmt.Errorf("load registry: %w", err)
 	}
 	contentProjectsDir := filepath.Join(myhubRoot, "content", "projects")
-	// ReadDir failures are non-fatal — first-run has no projects yet.
 	_ = reg.Scan(contentProjectsDir)
 	_ = reg.Save()
 
@@ -70,11 +69,15 @@ func New(myhubRoot, userName string) (Model, error) {
 }
 
 // Init kicks off per-project git-info fetches in parallel. Each completes
-// as an independent gitInfoMsg so the UI can render progressively.
+// as an independent gitInfoMsg so the UI populates progressively.
 func (m Model) Init() tea.Cmd {
+	return m.refreshAllGitInfo()
+}
+
+func (m Model) refreshAllGitInfo() tea.Cmd {
 	var cmds []tea.Cmd
 	for _, p := range m.Registry.Active() {
-		p := p // capture
+		p := p
 		cmds = append(cmds, func() tea.Msg {
 			return gitInfoMsg{name: p.Name, info: projects.Info(p.Path)}
 		})
@@ -93,21 +96,59 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		m.gitInfo[msg.name] = msg.info
 		return m, nil
 
+	case launch.ClaudeExitedMsg:
+		return m.handleClaudeExit(msg)
+
 	case tea.KeyMsg:
 		return m.handleKey(msg)
 	}
 	return m, nil
 }
 
+func (m Model) handleClaudeExit(msg launch.ClaudeExitedMsg) (Model, tea.Cmd) {
+	// Bump last_opened_at so next mount surfaces this project at the top.
+	_ = m.Registry.Touch(msg.ProjectName)
+
+	if msg.Err != nil {
+		m.notice = fmt.Sprintf("claude beendet mit fehler: %s", msg.Err)
+	} else {
+		m.notice = fmt.Sprintf("zurück aus %s.", msg.ProjectName)
+	}
+	m.screen = ScreenMain
+
+	// Re-fetch git info for that project — its state likely changed.
+	return m, func() tea.Msg {
+		return gitInfoMsg{
+			name: msg.ProjectName,
+			info: projects.Info(msg.ProjectPath),
+		}
+	}
+}
+
 func (m Model) handleKey(k tea.KeyMsg) (Model, tea.Cmd) {
 	m.notice = ""
-	active := m.Registry.Active()
-
+	// Universal keys first.
 	switch k.String() {
 	case "q", "ctrl+c", "ctrl+d":
 		m.quitting = true
 		return m, tea.Quit
+	case "?":
+		m.notice = m.helpText()
+		return m, nil
+	}
 
+	active := m.Registry.Active()
+	switch m.screen {
+	case ScreenMain:
+		return m.handleMainKey(k, active)
+	case ScreenProject:
+		return m.handleProjectKey(k, active)
+	}
+	return m, nil
+}
+
+func (m Model) handleMainKey(k tea.KeyMsg, active []projects.Project) (Model, tea.Cmd) {
+	switch k.String() {
 	case "up", "k":
 		if m.cursor > 0 {
 			m.cursor--
@@ -122,43 +163,54 @@ func (m Model) handleKey(k tea.KeyMsg) (Model, tea.Cmd) {
 		if len(active) > 0 {
 			m.cursor = len(active) - 1
 		}
-
-	case "enter", "c":
+	case "enter":
+		if len(active) > 0 {
+			m.screen = ScreenProject
+		}
+	case "c":
 		if len(active) > 0 {
 			p := active[m.cursor]
-			m.notice = fmt.Sprintf("would launch claude in %s  (wired in phase 1D)", p.Path)
+			return m, launch.Claude(m.MyhubRoot, p.Name, p.Path)
 		}
-
 	case "g":
-		// SPEC §7.6: g launches lazygit in the selected project. Not wired yet.
 		if len(active) > 0 {
 			m.notice = "lazygit launch not wired yet (phase 2)"
 		}
-
-	case "b", "esc":
-		if m.screen != ScreenMain {
-			m.screen = ScreenMain
-		}
-
-	case "?":
-		m.notice = "keys: ↑↓ j k · 1-9 select · enter/c claude · b/esc back · q quit"
-
 	default:
-		// Number keys 1-9 jump the cursor (and, in phase 1D, launch claude).
-		if len(k.String()) == 1 {
-			ch := k.String()[0]
-			if ch >= '1' && ch <= '9' {
-				n := int(ch - '0')
-				if n <= len(active) {
-					m.cursor = n - 1
-					if p := active[m.cursor]; true {
-						m.notice = fmt.Sprintf("would launch claude in %s  (wired in phase 1D)", p.Path)
-					}
-				}
+		// 1-9 → jump cursor + open project detail (SPEC §7.6).
+		if s := k.String(); len(s) == 1 && s[0] >= '1' && s[0] <= '9' {
+			n := int(s[0] - '0')
+			if n <= len(active) {
+				m.cursor = n - 1
+				m.screen = ScreenProject
 			}
 		}
 	}
 	return m, nil
+}
+
+func (m Model) handleProjectKey(k tea.KeyMsg, active []projects.Project) (Model, tea.Cmd) {
+	if len(active) == 0 || m.cursor >= len(active) {
+		m.screen = ScreenMain
+		return m, nil
+	}
+	p := active[m.cursor]
+	switch k.String() {
+	case "b", "esc":
+		m.screen = ScreenMain
+	case "c", "enter":
+		return m, launch.Claude(m.MyhubRoot, p.Name, p.Path)
+	case "g":
+		m.notice = "lazygit launch not wired yet (phase 2)"
+	}
+	return m, nil
+}
+
+func (m Model) helpText() string {
+	if m.screen == ScreenProject {
+		return "[c/enter] claude  ·  [g] lazygit  ·  [b/esc] back  ·  [q] quit"
+	}
+	return "[↑↓ jk] move  ·  [enter/1-9] detail  ·  [c] claude  ·  [q] quit"
 }
 
 // View renders the active screen. Bubble Tea calls this after every Update.
@@ -196,7 +248,7 @@ func (m Model) viewMain() string {
 
 	// Project list.
 	listHead := theme.Subheader.Render("projects") +
-		theme.DimStyle.Render("  (↑↓ / j k move · 1-9 jump · enter/c claude · q quit)")
+		theme.DimStyle.Render("  (↑↓ jk move · enter/1-9 detail · c claude · q quit)")
 	b.WriteString(theme.LeftPad.Render(listHead))
 	b.WriteString("\n")
 
@@ -212,7 +264,7 @@ func (m Model) viewMain() string {
 		}
 	}
 
-	// Notice / status line.
+	// Notice + footer.
 	b.WriteString("\n")
 	if m.notice != "" {
 		b.WriteString(theme.LeftPad.Render(theme.WarningStyle.Render(m.notice)))
@@ -227,41 +279,35 @@ func (m Model) viewMain() string {
 func (m Model) renderProjectRow(idx int, p projects.Project) string {
 	gi := m.gitInfo[p.Name]
 	status := theme.SuccessStyle.Render(theme.GlyphCheck)
-	if gi.Dirty {
+	switch {
+	case gi.Branch == "":
+		status = theme.DimStyle.Render(theme.GlyphSep)
+	case gi.Dirty:
 		status = theme.WarningStyle.Render(theme.GlyphDirty)
 	}
-	if gi.Branch == "" {
-		status = theme.DimStyle.Render(theme.GlyphSep)
-	}
-	num := fmt.Sprintf("[%d]", idx+1)
-	name := p.Label()
-	style := theme.ProjectDefault
 	cursor := " "
+	style := theme.ProjectDefault
 	if idx == m.cursor {
-		style = theme.ProjectSelected
 		cursor = theme.Header.Render(theme.GlyphArrow)
+		style = theme.ProjectSelected
 	}
 
 	branch := gi.Branch
 	if branch == "" {
-		branch = theme.DimStyle.Render("—")
-	} else {
-		branch = theme.DimStyle.Render(branch)
+		branch = "—"
 	}
 	commit := gi.LastCommit
 	if commit == "" {
-		commit = theme.DimStyle.Render("—")
-	} else {
-		commit = theme.DimStyle.Render(commit)
+		commit = "—"
 	}
 
 	row := lipgloss.JoinHorizontal(lipgloss.Top,
 		cursor, " ",
-		theme.DimStyle.Render(num), " ",
-		style.Render(padRight(name, 18)), " ",
-		branch, " ",
+		theme.DimStyle.Render(fmt.Sprintf("[%d]", idx+1)), " ",
+		style.Render(padRight(p.Label(), 18)), " ",
+		theme.DimStyle.Render(padRight(branch, 10)), " ",
 		status, "  ",
-		commit,
+		theme.DimStyle.Render(commit),
 	)
 	return theme.LeftPad.Render(row)
 }
@@ -272,11 +318,43 @@ func (m Model) viewProject() string {
 		return ""
 	}
 	p := active[m.cursor]
-	return fmt.Sprintf("\n  %s\n  %s\n  [b] back\n", p.Label(), p.Path)
+	gi := m.gitInfo[p.Name]
+
+	var b strings.Builder
+	b.WriteString("\n")
+	b.WriteString(theme.LeftPad.Render(theme.Header.Render("▓▒░ " + p.Label() + " ░▒▓")))
+	b.WriteString("\n\n")
+
+	writeField := func(label, value string) {
+		if value == "" {
+			value = "—"
+		}
+		line := theme.DimStyle.Render(padRight(label+":", 10)) + value
+		b.WriteString(theme.LeftPad.Render(line))
+		b.WriteString("\n")
+	}
+	writeField("path", p.Path)
+	writeField("branch", gi.Branch)
+	writeField("last", gi.LastCommit)
+	if !p.LastOpenedAt.IsZero() {
+		writeField("opened", p.LastOpenedAt.Local().Format("2006-01-02 15:04"))
+	}
+	if p.GitRemote != "" {
+		writeField("remote", p.GitRemote)
+	}
+
+	b.WriteString("\n")
+	if m.notice != "" {
+		b.WriteString(theme.LeftPad.Render(theme.WarningStyle.Render(m.notice)))
+		b.WriteString("\n\n")
+	}
+	b.WriteString(theme.LeftPad.Render(theme.DimStyle.Render(
+		"[c/enter] claude  ·  [g] lazygit  ·  [b/esc] back  ·  [q] quit")))
+	b.WriteString("\n")
+	return b.String()
 }
 
 // padRight pads s with spaces on the right to at least n visible chars.
-// Simple version — does not account for ANSI. Callers pass raw strings.
 func padRight(s string, n int) string {
 	if len(s) >= n {
 		return s
