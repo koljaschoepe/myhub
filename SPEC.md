@@ -752,45 +752,59 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
 
 ## 16. Roadmap
 
-### Phase 0 — Skeleton
-- Public GitHub repo `koljaschoepe/myhub` ✓ (DONE)
-- LICENSE, README, SPEC v1 → SPEC v2 ✓ (DONE)
-- `.gitignore` skeleton ✓ (DONE)
-- Reformat T7 from ExFAT → APFS, name volume `myhub`
-- Directory scaffold under SSD root (all the empty dirs + template files)
-- `manifest.json` generator script (Go or shell)
+> **Status as of 2026-04-22:** Phases 0, 1, 2, and 3 are complete and the
+> compiler agent has been live-verified. The SSD layout produces clean,
+> citation-heavy wiki articles from raw notes on the first pass. Remaining:
+> Phase 4 (release pipeline), Phase 5 (optional scale-outs), and the one
+> physical step — reformatting T7 to APFS and deploying.
 
-### Phase 1 — MVP that boots to a hub
-- `myhub-tui` Go project skeleton: Bubble Tea + Lipgloss, static arm64 build via `make build`.
-- TUI minimal: header with time-aware greeting + project list from filesystem scan + numbered keymap.
-- `internal/launch/` using `tea.ExecProcess` to run `claude` in selected project dir.
-- `install.command` + launchd plist + `on-mount.sh` (with sound + notification).
-- `launcher.sh` setting `CLAUDE_CONFIG_DIR` and exec'ing `myhub-tui`.
-- Bundled Claude Code binary (arm64).
-- Root `content/CLAUDE.md` template (llms.txt-style map).
-- Per-directory `CLAUDE.md` stubs.
-- `terse` output style.
-- **Ship-ready for author's own daily use. OAuth-on-SSD works across Macs. Hub + Claude launch round-trip works.**
+### Phase 0 — Skeleton ✓ DONE
+- Public GitHub repo `koljaschoepe/myhub` ✓
+- LICENSE, README, SPEC v1 → SPEC v2 ✓
+- `.gitignore` that distinguishes templates from user data ✓
+- Directory scaffold under SSD root (`.boot/`, `.claude/`, `content/`, `memory/`, `tooling/`) ✓
+- `.boot/` scripts (install/uninstall/on-mount/launcher/preflight/plist) ✓
+- `.claude/` scaffold (2 agents, 4 slash commands, 2 hooks, terse style) ✓
+- SSD-local Go toolchain (`tooling/go/`, bootstrap via `install-go.sh`) ✓
+- *(Deferred, user action)* Reformat T7 ExFAT → APFS, name volume `myhub`
+- *(Phase 4)* `manifest.json` generator script (currently a stub)
 
-### Phase 2 — Interview + Setup + Voice
-- `internal/interview/` primitive (§12) — Bubble Tea overlay component.
-- `/setup` slash command + matching first-run TUI wizard (via Interview primitive).
-- TTS integration: `say -v Daniel` on brief.
-- `briefer` agent v1: headless `claude -p --agent briefer` called by TUI on mount.
-- `memory/MEMORY.md` + typed memory files scaffold.
-- `/reflect` slash command: distills session into memory.
-- `session-end.sh` hook: auto-reflect on non-trivial sessions.
-- Project registry (`memory/projects.yaml`) with atomic writes + corrupt-self-heal.
-- Project detail screen (`ScreenProject`) + new/rename/delete wizards.
+### Phase 1 — MVP that boots to a hub ✓ DONE
+- `myhub-tui` Go project skeleton: Bubble Tea + Lipgloss, static arm64 binary ✓
+- TUI: header + time-aware greeting + project list (filesystem-scanned) + numbered keymap ✓
+- `internal/launch/` using `tea.ExecProcess` to run `claude` in selected project dir ✓
+- `install.command` + launchd plist + `on-mount.sh` (lauffähig, chmod +x) ✓
+- `launcher.sh` setting `CLAUDE_CONFIG_DIR`, `MYHUB_ROOT`, `PATH` (+ tooling/go/bin) ✓
+- Root `content/CLAUDE.md` template (llms.txt-style map) + per-domain CLAUDE.mds ✓
+- `terse` output style ✓
+- **Auth-on-SSD empirically verified** — CLAUDE_CONFIG_DIR bypasses Keychain ✓
+- *(Phase 4)* Bundled Claude Code binary (currently dev falls back to $PATH)
 
-### Phase 3 — Wiki Compiler (Karpathy pattern)
-- `compiler` agent full implementation.
-- `content/wiki/` structure with people/projects/concepts/timeline subdirs.
-- `/compile` and `/compile --since=` slash commands.
-- `fswatch` watcher (background, during session): debounced auto-compile triggers.
-- Wiki linking conventions: source backlinks, cross-article `[[wikilinks]]`.
-- `myhub compile --full` CLI for cold rebuild.
-- Hub shows wiki freshness indicator ("wiki 2h stale").
+### Phase 2 — Interview + Setup + Voice ✓ DONE
+- `internal/interview/` primitive (§12) — Bubble Tea overlay component ✓
+- `/setup` slash command + matching first-run TUI wizard via Interview primitive ✓
+- TTS integration: `say -v Daniel` on brief (async, kill-switch via MYHUB_TTS=0) ✓
+- `briefer` agent v1: headless `claude -p --agent briefer` called by TUI on mount ✓
+- `internal/config/` for memory/config.toml (name, language, TTS, editor) ✓
+- `memory/MEMORY.md` + typed memory files scaffold ✓
+- `/reflect` slash command (defined) ✓
+- `session-end.sh` hook ✓
+- Project registry (`memory/projects.yaml`) with atomic writes + self-heal ✓
+- Project detail screen (`ScreenProject`) ✓
+- *(Phase 3+)* new/rename/delete project wizards — not yet wired
+
+### Phase 3 — Wiki Compiler (Karpathy pattern) ✓ DONE
+- `compiler` agent full implementation (prompt in `.claude/agents/compiler.md`) ✓
+- `content/wiki/` structure: people/projects/concepts/timeline/_archive, each with CLAUDE.md ✓
+- `/compile` slash command + `myhub compile [--since=|--full|--dry-run]` CLI ✓
+- **`internal/watcher/` using fsnotify** (not macOS `fswatch`) — 30s-debounced auto-compile triggers, dashboard fires a background compile on watch events ✓
+- Wiki linking conventions enforced by agent: source backlinks + `[[wikilinks]]` ✓
+- `internal/wikistate/` + dashboard header indicator: "wiki aktuell" / "wiki 2h stale" ✓
+- Second binary `bin/myhub` (CLI): `compile`, `health`, `stats`, `trust` subcommands ✓
+- **Live-verified 2026-04-22:** real compile pass over 2 test notes produced
+  2 well-structured wiki articles (`projects/myhub.md` + `concepts/llm-wiki-pattern.md`)
+  with correct `[source: ...]` backlinks and `[[wikilinks]]`, deferred a borderline
+  people article as an open thread on the project article. Idempotent. ✓
 
 ### Phase 4 — Public Release
 - Polish README (GIF of plug-in → TUI → voice greeting → Claude session).
