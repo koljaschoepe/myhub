@@ -21,7 +21,7 @@ func TestViewDoesNotPanicOnEmpty(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(tmp, "content", "projects"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	m, err := New(tmp, "testuser")
+	m, err := New(tmp, "testuser", Options{})
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -39,7 +39,7 @@ func TestViewDoesNotPanicOnEmpty(t *testing.T) {
 
 // TestKeyQuit confirms q sets quitting and returns tea.Quit.
 func TestKeyQuit(t *testing.T) {
-	m, err := New(t.TempDir(), "testuser")
+	m, err := New(t.TempDir(), "testuser", Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -61,7 +61,7 @@ func TestCursorWrap(t *testing.T) {
 		_ = os.MkdirAll(d, 0755)
 		_ = os.WriteFile(filepath.Join(d, "CLAUDE.md"), []byte("# test"), 0644)
 	}
-	m, err := New(tmp, "testuser")
+	m, err := New(tmp, "testuser", Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,11 +86,58 @@ func TestCursorWrap(t *testing.T) {
 // TestOnboardingAutoArmsForEmptyConfig verifies New() arms the wizard when
 // no config exists and no userName override is given.
 func TestOnboardingAutoArmsForEmptyConfig(t *testing.T) {
-	m, err := New(t.TempDir(), "")
+	m, err := New(t.TempDir(), "", Options{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	if m.onboarding == nil {
 		t.Fatal("expected onboarding to be armed when config missing + no userName override")
+	}
+}
+
+// TestSafeModeSuppressesSideEffects verifies that safe-mode disables
+// watcher, onboarding, and surfaces the banner.
+func TestSafeModeSuppressesSideEffects(t *testing.T) {
+	tmp := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(tmp, "content", "projects"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	m, err := New(tmp, "", Options{SafeMode: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !m.SafeMode {
+		t.Error("SafeMode flag not propagated")
+	}
+	if m.onboarding != nil {
+		t.Error("safe-mode should NOT arm the onboarding wizard")
+	}
+	if m.watch != nil {
+		t.Error("safe-mode should NOT start the watcher")
+	}
+	out := m.View()
+	if !strings.Contains(out, "safe-mode") {
+		t.Errorf("view missing safe-mode banner; got:\n%s", out)
+	}
+}
+
+// TestSafeModeUsesFallbackBriefer confirms runBriefer() returns a Fallback
+// brief (no claude -p subprocess) in safe-mode.
+func TestSafeModeUsesFallbackBriefer(t *testing.T) {
+	m, err := New(t.TempDir(), "Kolja", Options{SafeMode: true})
+	if err != nil {
+		t.Fatal(err)
+	}
+	cmd := m.runBriefer()
+	if cmd == nil {
+		t.Fatal("runBriefer returned nil cmd")
+	}
+	msg := cmd()
+	ready, ok := msg.(briefReadyMsg)
+	if !ok {
+		t.Fatalf("expected briefReadyMsg, got %T", msg)
+	}
+	if !ready.brief.IsFallback {
+		t.Error("safe-mode should produce a Fallback brief (no claude call)")
 	}
 }

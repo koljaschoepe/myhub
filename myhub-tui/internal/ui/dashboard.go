@@ -30,12 +30,26 @@ const (
 	ScreenProject
 )
 
+// Options shapes optional constructor parameters for New().
+type Options struct {
+	// SafeMode disables every host-side side effect: no TTS, no watcher-
+	// triggered compiles, no YAML writes (projects registry, config), no
+	// onboarding wizard. Intended for plugging the SSD into a Mac you
+	// don't fully trust — you can browse, read, even start Claude, but
+	// nothing gets written to the SSD or the host.
+	SafeMode bool
+}
+
 // Model is the Elm-style state for the TUI.
 type Model struct {
 	MyhubRoot string             // absolute SSD root path
 	UserName  string             // pulled from config; empty → anonymous greeting
 	Registry  *projects.Registry // lives at memory/projects.yaml
 	gitInfo   map[string]projects.GitInfo
+
+	// SafeMode mirrors Options.SafeMode — propagated through the model
+	// so every branch that would write or side-effect checks it.
+	SafeMode bool
 
 	screen Screen
 	cursor int
@@ -92,10 +106,11 @@ type compileDoneMsg struct {
 }
 
 // New loads (or initializes) the registry, scans the filesystem, persists
-// the merged view, loads memory/config.toml (for name/TTS prefs), and
+// the merged view (unless safe-mode), loads memory/config.toml, and
 // returns a ready-to-run Model. If no config is present and no MYHUB_USER
-// override was supplied, the first-run onboarding wizard is armed.
-func New(myhubRoot, userName string) (Model, error) {
+// override was supplied AND we're not in safe-mode, the first-run
+// onboarding wizard is armed.
+func New(myhubRoot, userName string, opts Options) (Model, error) {
 	regPath := filepath.Join(myhubRoot, "memory", "projects.yaml")
 	reg, err := projects.LoadRegistry(regPath)
 	if err != nil {
@@ -103,7 +118,11 @@ func New(myhubRoot, userName string) (Model, error) {
 	}
 	contentProjectsDir := filepath.Join(myhubRoot, "content", "projects")
 	_ = reg.Scan(contentProjectsDir)
-	_ = reg.Save()
+	if !opts.SafeMode {
+		// In safe mode we never write. The in-memory scan is still fine to
+		// render; it's just not persisted back to disk.
+		_ = reg.Save()
+	}
 
 	// Config is best-effort: parse errors degrade to empty config + a
 	// notice. Missing file → empty config → onboarding fires.
@@ -112,11 +131,14 @@ func New(myhubRoot, userName string) (Model, error) {
 		cfg = &config.Config{}
 	}
 
-	// Spin up the watcher. Failure is non-fatal — if fsnotify can't start,
-	// the dashboard still works; auto-compile just won't fire.
-	w, werr := watcher.New(filepath.Join(myhubRoot, "content"), 30*time.Second)
-	if werr == nil {
-		_ = w.Start()
+	// Watcher only in full mode — its whole job is to trigger writes.
+	var w *watcher.Watcher
+	if !opts.SafeMode {
+		ww, werr := watcher.New(filepath.Join(myhubRoot, "content"), 30*time.Second)
+		if werr == nil {
+			_ = ww.Start()
+			w = ww
+		}
 	}
 
 	m := Model{
@@ -128,6 +150,7 @@ func New(myhubRoot, userName string) (Model, error) {
 		TTSVoice:  briefer.DefaultVoice,
 		watch:     w,
 		freshness: wikistate.Scan(myhubRoot),
+		SafeMode:  opts.SafeMode,
 	}
 	if cfg.TTS.Voice != "" {
 		m.TTSVoice = cfg.TTS.Voice
@@ -140,8 +163,9 @@ func New(myhubRoot, userName string) (Model, error) {
 		m.notice = "config parse warning: " + cfgErr.Error()
 	}
 	// First-run: launch the wizard unless the caller provided a username
-	// via env (dev override).
-	if cfg.NeedsOnboarding() && userName == "" {
+	// via env (dev override) or we're in safe mode (writing config.toml
+	// would be a side effect safe-mode forbids).
+	if cfg.NeedsOnboarding() && userName == "" && !opts.SafeMode {
 		o := DefaultOnboarding()
 		m.onboarding = &o
 	}
@@ -216,7 +240,16 @@ func (m Model) triggerCompile() tea.Cmd {
 // runBriefer returns a cmd that invokes `claude -p --agent briefer`
 // headlessly and delivers a briefReadyMsg. Capped at 10s by the briefer
 // package itself; here we just hand it a fresh context.
+//
+// Safe-mode behavior: a claude-p invocation would spawn a subprocess
+// that hits the network and may write to CLAUDE_CONFIG_DIR. To stay
+// on the read-only side of the line, safe-mode returns the static
+// fallback brief instead.
 func (m Model) runBriefer() tea.Cmd {
+	if m.SafeMode {
+		name := m.UserName
+		return func() tea.Msg { return briefReadyMsg{brief: briefer.Fallback(name)} }
+	}
 	return func() tea.Msg {
 		return briefReadyMsg{
 			brief: briefer.Run(context.Background(), m.MyhubRoot, m.UserName),
@@ -267,14 +300,16 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case briefReadyMsg:
 		m.brief = msg.brief
-		briefer.Speak(m.brief.Text, m.TTSVoice)
+		if !m.SafeMode {
+			briefer.Speak(m.brief.Text, m.TTSVoice)
+		}
 		return m, nil
 
 	case watcherTickMsg:
-		// Kick off a compile unless one is already running. Re-subscribe
-		// so we keep hearing from the watcher.
+		// Re-subscribe to the watcher; only trigger a compile when not
+		// in safe mode and no compile is already running.
 		cmds := []tea.Cmd{m.waitWatcher()}
-		if !m.compileRunning {
+		if !m.SafeMode && !m.compileRunning {
 			m.compileRunning = true
 			m.notice = fmt.Sprintf("wiki compile getriggert (%d Datei-Änderung(en))", len(msg.event.Paths))
 			cmds = append(cmds, m.triggerCompile())
@@ -306,7 +341,12 @@ func (m Model) handleOnboardingDone(msg OnboardingDoneMsg) (tea.Model, tea.Cmd) 
 		m.notice = "setup abgebrochen — Du kannst es jederzeit mit /setup im Claude-Session nachholen."
 		return m, nil
 	}
-	// Persist config.
+	// Persist config — belt-and-braces check for safe-mode even though the
+	// wizard shouldn't have armed in that case.
+	if m.SafeMode {
+		m.notice = "setup im safe-mode nicht gespeichert."
+		return m, nil
+	}
 	if err := config.Save(config.Path(m.MyhubRoot), &msg.Config); err != nil {
 		m.notice = "setup fehlgeschlagen beim Speichern: " + err.Error()
 		return m, nil
@@ -322,8 +362,11 @@ func (m Model) handleOnboardingDone(msg OnboardingDoneMsg) (tea.Model, tea.Cmd) 
 }
 
 func (m Model) handleClaudeExit(msg launch.ClaudeExitedMsg) (Model, tea.Cmd) {
-	// Bump last_opened_at so next mount surfaces this project at the top.
-	_ = m.Registry.Touch(msg.ProjectName)
+	// Bump last_opened_at so the next mount surfaces this project at the
+	// top. Skipped in safe mode — Touch writes to memory/projects.yaml.
+	if !m.SafeMode {
+		_ = m.Registry.Touch(msg.ProjectName)
+	}
 
 	if msg.Err != nil {
 		m.notice = fmt.Sprintf("claude beendet mit fehler: %s", msg.Err)
@@ -452,6 +495,14 @@ func (m Model) View() string {
 func (m Model) viewMain() string {
 	var b strings.Builder
 	b.WriteString("\n")
+
+	// Safe-mode banner — prominent, above the header, so the user is never
+	// confused about what's happening.
+	if m.SafeMode {
+		b.WriteString(theme.LeftPad.Render(
+			theme.WarningStyle.Render("⚠ safe-mode — keine writes, keine TTS, keine auto-compile")))
+		b.WriteString("\n\n")
+	}
 
 	// Header: logo + greeting + wiki freshness.
 	logo := theme.Header.Render("▓▒░ myhub ░▒▓")
