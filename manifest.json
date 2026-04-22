@@ -1,0 +1,7 @@
+{
+  "$schema_version": 1,
+  "generated_at": null,
+  "note": "Phase 0 stub. Real manifest generator ships in Phase 1; verification is opt-in until then. Paths and SHA-256 hashes will be injected by scripts/gen-manifest.sh.",
+  "version": "0.1.0-dev",
+  "hashes": {}
+}
