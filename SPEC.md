@@ -215,12 +215,12 @@ launchd sees mount event (StartOnMount=true)
             ├─ shows notification "myhub connected" via osascript
             ├─ runs preflight.sh (binaries OK? config readable? memory dir present?)
             └─ opens Terminal.app via AppleScript:
-                  cd /Volumes/myhub && ./bin/launcher.sh
+                  cd /Volumes/myhub && ./.boot/launcher.sh
 ```
 
 ### 5.3 The launcher
 ```bash
-# /Volumes/myhub/bin/launcher.sh (simplified)
+# /Volumes/myhub/.boot/launcher.sh (simplified)
 MYHUB="$(cd "$(dirname "$0")/.." && pwd)"
 export CLAUDE_CONFIG_DIR="$MYHUB/.claude"
 export CLAUDE_CODE_PLUGIN_CACHE_DIR="$MYHUB/.claude/plugins"

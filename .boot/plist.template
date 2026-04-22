@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.myhub.mount</string>
+
+    <key>Program</key>
+    <string>__MYHUB_PATH__/.boot/on-mount.sh</string>
+
+    <key>StartOnMount</key>
+    <true/>
+
+    <key>RunAtLoad</key>
+    <false/>
+
+    <key>StandardOutPath</key>
+    <string>/tmp/com.myhub.mount.out</string>
+
+    <key>StandardErrorPath</key>
+    <string>/tmp/com.myhub.mount.err</string>
+</dict>
+</plist>
