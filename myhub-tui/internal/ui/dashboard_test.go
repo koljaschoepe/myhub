@@ -9,14 +9,19 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 )
 
+// Tests below pass a non-empty userName to New() — this bypasses the
+// first-run onboarding wizard so the main dashboard logic is reachable.
+// The onboarding-auto-arm path is covered by onboarding_test.go.
+
 // TestViewDoesNotPanicOnEmpty exercises the empty-state path: no projects,
-// no git info, no name. Just View() must return non-empty without panic.
+// no git info, named user (so onboarding is skipped). View() must return
+// non-empty without panic.
 func TestViewDoesNotPanicOnEmpty(t *testing.T) {
 	tmp := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(tmp, "content", "projects"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	m, err := New(tmp, "")
+	m, err := New(tmp, "testuser")
 	if err != nil {
 		t.Fatalf("New: %v", err)
 	}
@@ -34,7 +39,7 @@ func TestViewDoesNotPanicOnEmpty(t *testing.T) {
 
 // TestKeyQuit confirms q sets quitting and returns tea.Quit.
 func TestKeyQuit(t *testing.T) {
-	m, err := New(t.TempDir(), "")
+	m, err := New(t.TempDir(), "testuser")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -56,7 +61,7 @@ func TestCursorWrap(t *testing.T) {
 		_ = os.MkdirAll(d, 0755)
 		_ = os.WriteFile(filepath.Join(d, "CLAUDE.md"), []byte("# test"), 0644)
 	}
-	m, err := New(tmp, "")
+	m, err := New(tmp, "testuser")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -67,7 +72,7 @@ func TestCursorWrap(t *testing.T) {
 		t.Errorf("up at top: cursor=%d, want 0", next.(Model).cursor)
 	}
 
-	// Step down three times: cursor should land at 2 (len-1), not beyond.
+	// Step down 10 times: cursor should land at 2 (len-1), not beyond.
 	mm := m
 	for i := 0; i < 10; i++ {
 		n, _ := mm.Update(tea.KeyMsg{Type: tea.KeyDown})
@@ -75,5 +80,17 @@ func TestCursorWrap(t *testing.T) {
 	}
 	if mm.cursor != 2 {
 		t.Errorf("cursor wrap: got %d, want 2", mm.cursor)
+	}
+}
+
+// TestOnboardingAutoArmsForEmptyConfig verifies New() arms the wizard when
+// no config exists and no userName override is given.
+func TestOnboardingAutoArmsForEmptyConfig(t *testing.T) {
+	m, err := New(t.TempDir(), "")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if m.onboarding == nil {
+		t.Fatal("expected onboarding to be armed when config missing + no userName override")
 	}
 }

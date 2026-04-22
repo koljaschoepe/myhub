@@ -12,6 +12,7 @@ import (
 	"github.com/charmbracelet/lipgloss"
 
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/briefer"
+	"github.com/koljaschoepe/myhub/myhub-tui/internal/config"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/launch"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/projects"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/theme"
@@ -45,6 +46,10 @@ type Model struct {
 	// TTSVoice is the voice passed to `say`; empty disables speech.
 	TTSVoice string
 
+	// onboarding holds the first-run wizard when active; nil means the
+	// dashboard is rendering normally.
+	onboarding *Onboarding
+
 	// notice surfaces transient feedback ("zurück aus projekt X", "lazygit
 	// nicht verdrahtet"). Cleared on next keypress.
 	notice string
@@ -60,7 +65,9 @@ type gitInfoMsg struct {
 type briefReadyMsg struct{ brief briefer.Brief }
 
 // New loads (or initializes) the registry, scans the filesystem, persists
-// the merged view, and returns a ready-to-run Model.
+// the merged view, loads memory/config.toml (for name/TTS prefs), and
+// returns a ready-to-run Model. If no config is present and no MYHUB_USER
+// override was supplied, the first-run onboarding wizard is armed.
 func New(myhubRoot, userName string) (Model, error) {
 	regPath := filepath.Join(myhubRoot, "memory", "projects.yaml")
 	reg, err := projects.LoadRegistry(regPath)
@@ -71,14 +78,45 @@ func New(myhubRoot, userName string) (Model, error) {
 	_ = reg.Scan(contentProjectsDir)
 	_ = reg.Save()
 
-	return Model{
+	// Config is best-effort: parse errors degrade to empty config + a
+	// notice. Missing file → empty config → onboarding fires.
+	cfg, cfgErr := config.Load(config.Path(myhubRoot))
+	if cfg == nil {
+		cfg = &config.Config{}
+	}
+
+	m := Model{
 		MyhubRoot: myhubRoot,
-		UserName:  userName,
+		UserName:  firstNonEmpty(userName, cfg.User.Name),
 		Registry:  reg,
 		gitInfo:   map[string]projects.GitInfo{},
 		screen:    ScreenMain,
 		TTSVoice:  briefer.DefaultVoice,
-	}, nil
+	}
+	if cfg.TTS.Voice != "" {
+		m.TTSVoice = cfg.TTS.Voice
+	}
+	if !cfg.TTS.Enabled && cfg.User.Name != "" {
+		// User explicitly turned TTS off during onboarding.
+		m.TTSVoice = ""
+	}
+	if cfgErr != nil {
+		m.notice = "config parse warning: " + cfgErr.Error()
+	}
+	// First-run: launch the wizard unless the caller provided a username
+	// via env (dev override).
+	if cfg.NeedsOnboarding() && userName == "" {
+		o := DefaultOnboarding()
+		m.onboarding = &o
+	}
+	return m, nil
+}
+
+func firstNonEmpty(a, b string) string {
+	if a != "" {
+		return a
+	}
+	return b
 }
 
 // Init kicks off per-project git-info fetches AND the briefer invocation
@@ -115,6 +153,25 @@ func (m Model) refreshAllGitInfo() tea.Cmd {
 
 // Update dispatches messages.
 func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
+	// Onboarding-specific messages are consumed even when the wizard has
+	// already closed (so the tail end of its cmds lands in the right branch).
+	if done, ok := msg.(OnboardingDoneMsg); ok {
+		return m.handleOnboardingDone(done)
+	}
+
+	// When the wizard is active, delegate everything except global quit.
+	if m.onboarding != nil {
+		if k, ok := msg.(tea.KeyMsg); ok {
+			if s := k.String(); s == "ctrl+c" {
+				m.quitting = true
+				return m, tea.Quit
+			}
+		}
+		newO, cmd := m.onboarding.Update(msg)
+		m.onboarding = &newO
+		return m, cmd
+	}
+
 	switch msg := msg.(type) {
 	case tea.WindowSizeMsg:
 		m.width, m.height = msg.Width, msg.Height
@@ -136,6 +193,27 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 		return m.handleKey(msg)
 	}
 	return m, nil
+}
+
+func (m Model) handleOnboardingDone(msg OnboardingDoneMsg) (tea.Model, tea.Cmd) {
+	m.onboarding = nil
+	if msg.Cancelled {
+		m.notice = "setup abgebrochen — Du kannst es jederzeit mit /setup im Claude-Session nachholen."
+		return m, nil
+	}
+	// Persist config.
+	if err := config.Save(config.Path(m.MyhubRoot), &msg.Config); err != nil {
+		m.notice = "setup fehlgeschlagen beim Speichern: " + err.Error()
+		return m, nil
+	}
+	m.UserName = msg.Config.User.Name
+	m.TTSVoice = msg.Config.TTS.Voice
+	if !msg.Config.TTS.Enabled {
+		m.TTSVoice = ""
+	}
+	m.notice = fmt.Sprintf("willkommen, %s. setup gespeichert.", m.UserName)
+	// Re-run briefer now that we know the user's name.
+	return m, m.runBriefer()
 }
 
 func (m Model) handleClaudeExit(msg launch.ClaudeExitedMsg) (Model, tea.Cmd) {
@@ -250,6 +328,9 @@ func (m Model) helpText() string {
 func (m Model) View() string {
 	if m.quitting {
 		return ""
+	}
+	if m.onboarding != nil {
+		return "\n" + theme.LeftPad.Render(m.onboarding.View()) + "\n"
 	}
 	switch m.screen {
 	case ScreenMain:
