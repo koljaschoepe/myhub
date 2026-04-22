@@ -1,6 +1,6 @@
 {
   "$schema_version": 1,
-  "generated_at": "2026-04-22T22:05:25Z",
+  "generated_at": "2026-04-22T22:06:23Z",
   "version": "0.1.0-dev",
   "hashes": {
     ".boot/assets/.gitkeep": "7d2c3bc26d1db40f226648cc7b445f8663da746d68dc1d1ac4184bc8c3d7776a",
@@ -23,7 +23,7 @@
     ".claude/skills/.gitkeep": "8d8b4da863d73cb6dd4ef4ac1aae325f099f6d0e47029f70fcabf6203bbd18ef",
     "LICENSE": "2f7bb7a29d9c8a34140b8fe9d44c61a74d84f55683fef02b25b8c2fc1ca4b027",
     "README.md": "f9a413a295a9ac3f3ecca5354efda729358bbaf33d70779df79012b7fa8c69dc",
-    "SPEC.md": "dfa788fda8ad5eff47d9051425cead5f559d4ecd275cf7cfc99ba6b9a5034e2b",
+    "SPEC.md": "ff08df22ef3060ecfe7d718d39c5ae1b70039c0e391aa1a4dff5ced26d6d21c7",
     "VERSION": "c2ef39e09593cca70be98a0fb0ab435b53e2eb3c3d4e812cd7d43794eafa7728",
     "bin/myhub": "14c0f94a6913692a0c6291ee577a5decc704ef2e1c25046e52287cd8b820891f",
     "bin/myhub-tui": "b80871d1706280ef8761aa2302a62dfb7bf321c90f99930803fe3395879ada97",

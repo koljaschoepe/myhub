@@ -752,11 +752,11 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
 
 ## 16. Roadmap
 
-> **Status as of 2026-04-22:** Phases 0, 1, 2, and 3 are complete and the
-> compiler agent has been live-verified. The SSD layout produces clean,
-> citation-heavy wiki articles from raw notes on the first pass. Remaining:
-> Phase 4 (release pipeline), Phase 5 (optional scale-outs), and the one
-> physical step — reformatting T7 to APFS and deploying.
+> **Status as of 2026-04-23:** Phases 0–4 (minus notarization) are complete.
+> CI pipeline green on every push. Compiler agent live-verified producing
+> clean citation-heavy wiki articles. Remaining: notarization (needs Apple
+> Developer ID), Phase 5 scale-outs, and the physical step — reformatting
+> T7 to APFS and deploying.
 
 ### Phase 0 — Skeleton ✓ DONE
 - Public GitHub repo `koljaschoepe/myhub` ✓
@@ -806,14 +806,15 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
   with correct `[source: ...]` backlinks and `[[wikilinks]]`, deferred a borderline
   people article as an open thread on the project article. Idempotent. ✓
 
-### Phase 4 — Public Release
-- Polish README (GIF of plug-in → TUI → voice greeting → Claude session).
-- `uninstall.command` (removes launchd plist cleanly).
-- `manifest.json` + SHA-256 verification in installer.
-- GitHub Actions release pipeline (build arm64 binary, package, publish tarball).
-- Notarization path OR prominent `xattr` instruction in README.
-- `--safe-mode` flag (read-only, no writes to host, no TTS) for untrusted Macs.
-- Onboarding documentation: voice upgrade guide, CLAUDE.md authoring guide.
+### Phase 4 — Public Release ✓ DONE (except notarization)
+- README rewritten: quickstart with real commands, CLI table, safe-mode callout, feature table, dev quickstart ✓
+- `uninstall.command` (removes launchd plist cleanly) ✓ *(shipped in Phase 0)*
+- `manifest.json` + SHA-256 verification (`myhub manifest` + `myhub verify`; install.command + on-mount.sh both verify) ✓
+- GitHub Actions pipeline: `.github/workflows/ci.yml` on push+PR (vet, test-race, build + artifacts); `.github/workflows/release.yml` on `v*.*.*` tags (build + stage + tar + sha256 + gh release with release notes) ✓
+- Gatekeeper: `xattr -dr com.apple.quarantine` documented prominently in README + release notes ✓
+- `--safe-mode` flag (read-only, no TTS, no writes, no onboarding, no auto-compile; yellow banner in UI) ✓
+- Docs: `docs/voice.md` (voice upgrade paths — Premium neural / Piper / ElevenLabs), `docs/authoring.md` (CLAUDE.md conventions) ✓
+- *(Deferred)* Notarization (Developer ID) — $99/yr Apple account required. Roadmap item for when the project has a stable release cadence.
 
 ### Phase 5 — Scale (optional, only if needed)
 - Opt-in `age`-encrypted subfolders for sensitive content.
