@@ -19,6 +19,7 @@ import (
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/projects"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/theme"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/watcher"
+	"github.com/koljaschoepe/myhub/myhub-tui/internal/wikistate"
 )
 
 // Screen is a top-level view the dashboard can render.
@@ -61,6 +62,10 @@ type Model struct {
 	// during an already-running pass. New events replace the in-flight
 	// trigger — the compiler is idempotent on no-change.
 	compileRunning bool
+
+	// freshness is the wiki-vs-raw mtime snapshot rendered in the header.
+	// Recomputed in New() and after every compileDoneMsg.
+	freshness wikistate.Freshness
 
 	// notice surfaces transient feedback ("zurück aus projekt X", "lazygit
 	// nicht verdrahtet"). Cleared on next keypress.
@@ -122,6 +127,7 @@ func New(myhubRoot, userName string) (Model, error) {
 		screen:    ScreenMain,
 		TTSVoice:  briefer.DefaultVoice,
 		watch:     w,
+		freshness: wikistate.Scan(myhubRoot),
 	}
 	if cfg.TTS.Voice != "" {
 		m.TTSVoice = cfg.TTS.Voice
@@ -277,6 +283,7 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case compileDoneMsg:
 		m.compileRunning = false
+		m.freshness = wikistate.Scan(m.MyhubRoot)
 		if msg.err != nil {
 			m.notice = fmt.Sprintf("wiki compile fehlgeschlagen: %s", msg.err)
 		} else {
@@ -446,10 +453,15 @@ func (m Model) viewMain() string {
 	var b strings.Builder
 	b.WriteString("\n")
 
-	// Header: logo + greeting.
+	// Header: logo + greeting + wiki freshness.
 	logo := theme.Header.Render("▓▒░ myhub ░▒▓")
 	greet := theme.DimStyle.Render(theme.Greet(time.Now(), m.UserName))
-	b.WriteString(theme.LeftPad.Render(logo + "   " + greet))
+	freshStyle := theme.DimStyle
+	if m.freshness.IsStale() {
+		freshStyle = theme.WarningStyle
+	}
+	freshness := freshStyle.Render(theme.GlyphSep + " " + m.freshness.Label())
+	b.WriteString(theme.LeftPad.Render(logo + "   " + greet + "   " + freshness))
 	b.WriteString("\n\n")
 
 	// Today panel — briefer output or a "loading" placeholder.
