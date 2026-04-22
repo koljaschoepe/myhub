@@ -70,7 +70,9 @@ type Model struct {
 
 // New constructs a Model. If any option has Recommended=true, the cursor
 // defaults to the first such option (nicer ergonomics: Enter accepts the
-// recommendation).
+// recommendation). If Options is empty and AllowCustom is true, the model
+// starts directly in custom-text-input mode (e.g. a "what's your name?"
+// prompt has no canned options to pick from).
 func New(q Question) Model {
 	m := Model{Q: q, selected: make(map[int]bool)}
 	for i, o := range q.Options {
@@ -78,6 +80,9 @@ func New(q Question) Model {
 			m.cursor = i
 			break
 		}
+	}
+	if len(q.Options) == 0 && q.AllowCustom {
+		m.customMode = true
 	}
 	return m
 }
