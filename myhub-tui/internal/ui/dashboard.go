@@ -2,6 +2,7 @@
 package ui
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -10,6 +11,7 @@ import (
 	tea "github.com/charmbracelet/bubbletea"
 	"github.com/charmbracelet/lipgloss"
 
+	"github.com/koljaschoepe/myhub/myhub-tui/internal/briefer"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/launch"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/projects"
 	"github.com/koljaschoepe/myhub/myhub-tui/internal/theme"
@@ -36,6 +38,13 @@ type Model struct {
 	width, height int
 	quitting      bool
 
+	// brief holds the current "today" panel content. Starts zero-valued
+	// (shows "briefer läuft…"), filled by the first briefReadyMsg.
+	brief briefer.Brief
+
+	// TTSVoice is the voice passed to `say`; empty disables speech.
+	TTSVoice string
+
 	// notice surfaces transient feedback ("zurück aus projekt X", "lazygit
 	// nicht verdrahtet"). Cleared on next keypress.
 	notice string
@@ -46,6 +55,9 @@ type gitInfoMsg struct {
 	name string
 	info projects.GitInfo
 }
+
+// briefReadyMsg is delivered when the briefer agent returns (or times out).
+type briefReadyMsg struct{ brief briefer.Brief }
 
 // New loads (or initializes) the registry, scans the filesystem, persists
 // the merged view, and returns a ready-to-run Model.
@@ -65,13 +77,29 @@ func New(myhubRoot, userName string) (Model, error) {
 		Registry:  reg,
 		gitInfo:   map[string]projects.GitInfo{},
 		screen:    ScreenMain,
+		TTSVoice:  briefer.DefaultVoice,
 	}, nil
 }
 
-// Init kicks off per-project git-info fetches in parallel. Each completes
-// as an independent gitInfoMsg so the UI populates progressively.
+// Init kicks off per-project git-info fetches AND the briefer invocation
+// in parallel. Each returns an independent message so the UI populates
+// progressively as results arrive.
 func (m Model) Init() tea.Cmd {
-	return m.refreshAllGitInfo()
+	return tea.Batch(
+		m.refreshAllGitInfo(),
+		m.runBriefer(),
+	)
+}
+
+// runBriefer returns a cmd that invokes `claude -p --agent briefer`
+// headlessly and delivers a briefReadyMsg. Capped at 10s by the briefer
+// package itself; here we just hand it a fresh context.
+func (m Model) runBriefer() tea.Cmd {
+	return func() tea.Msg {
+		return briefReadyMsg{
+			brief: briefer.Run(context.Background(), m.MyhubRoot, m.UserName),
+		}
+	}
 }
 
 func (m Model) refreshAllGitInfo() tea.Cmd {
@@ -94,6 +122,11 @@ func (m Model) Update(msg tea.Msg) (tea.Model, tea.Cmd) {
 
 	case gitInfoMsg:
 		m.gitInfo[msg.name] = msg.info
+		return m, nil
+
+	case briefReadyMsg:
+		m.brief = msg.brief
+		briefer.Speak(m.brief.Text, m.TTSVoice)
 		return m, nil
 
 	case launch.ClaudeExitedMsg:
@@ -237,12 +270,16 @@ func (m Model) viewMain() string {
 	b.WriteString(theme.LeftPad.Render(logo + "   " + greet))
 	b.WriteString("\n\n")
 
-	// Briefer placeholder (phase 2 will fill this).
-	today := theme.RoundedBorderFg.Render(
-		theme.PaddedPanel.Render(
-			theme.DimStyle.Render("today · briefer läuft…"),
-		),
-	)
+	// Today panel — briefer output or a "loading" placeholder.
+	todayContent := theme.DimStyle.Render("today · briefer läuft…")
+	if m.brief.Text != "" {
+		label := theme.DimStyle.Render("today")
+		if m.brief.IsFallback {
+			label = theme.DimStyle.Render("today · (fallback)")
+		}
+		todayContent = label + "\n" + m.brief.Text
+	}
+	today := theme.RoundedBorderFg.Render(theme.PaddedPanel.Render(todayContent))
 	b.WriteString(theme.LeftPad.Render(today))
 	b.WriteString("\n\n")
 
