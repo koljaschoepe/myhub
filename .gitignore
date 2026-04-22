@@ -40,6 +40,13 @@ bin/ollama
 bin/rg
 bin/fswatch
 
+# --- Build toolchains (shipped via Releases + install-go.sh bootstrap) ---
+tooling/go
+tooling/go-*
+tooling/*.tar.gz
+!tooling/README.md
+!tooling/install-go.sh
+
 # --- Boot-time state (host-specific, generated at install) ---
 .boot/trusted-hosts.json
 .boot/dashboard-state.json

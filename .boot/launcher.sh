@@ -11,7 +11,10 @@ MYHUB="$(cd "$(dirname "$0")/.." && pwd)"
 export CLAUDE_CONFIG_DIR="$MYHUB/.claude"
 export CLAUDE_CODE_PLUGIN_CACHE_DIR="$MYHUB/.claude/plugins"
 export MYHUB_ROOT="$MYHUB"
-export PATH="$MYHUB/bin:$PATH"
+
+# Prepend SSD-local tools to PATH. Order: bin (compiled binaries) first, then
+# Go toolchain (build-time). Everything lives on the SSD — zero host deps.
+export PATH="$MYHUB/bin:$MYHUB/tooling/go/bin:$PATH"
 
 # Hand off to the TUI. If it's missing (e.g. fresh clone before first build),
 # fall back to Claude Code directly so the user is never stranded.
