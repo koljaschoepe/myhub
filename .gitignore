@@ -1,0 +1,42 @@
+# User data — never committed (SPEC §13.1)
+content/
+memory/
+
+# Credentials — travel with the SSD, not the repo
+.claude/.credentials.json
+.claude/projects/
+.claude/todos/
+.claude/shell-snapshots/
+.claude/statsig/
+
+# Runtime binaries — shipped via Releases, not source
+bin/claude
+bin/claude-*
+bin/ollama
+bin/rg
+bin/fswatch
+
+# Go build artifacts (TUI)
+myhub-tui/bin/
+myhub-tui/dist/
+*.test
+*.out
+
+# macOS junk
+.DS_Store
+.AppleDouble
+.LSOverride
+._*
+
+# Editor junk
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Boot-time state that's host-specific
+.boot/trusted-hosts.json
+.boot/dashboard-state.json
+
+# Logs
+*.log
