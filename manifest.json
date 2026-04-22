@@ -1,6 +1,6 @@
 {
   "$schema_version": 1,
-  "generated_at": "2026-04-22T22:03:27Z",
+  "generated_at": "2026-04-22T22:05:25Z",
   "version": "0.1.0-dev",
   "hashes": {
     ".boot/assets/.gitkeep": "7d2c3bc26d1db40f226648cc7b445f8663da746d68dc1d1ac4184bc8c3d7776a",
@@ -22,7 +22,7 @@
     ".claude/settings.json": "529371d8cd50e2c6fcbea797c91552b6c8208237eb504fee8c2e96dc04590006",
     ".claude/skills/.gitkeep": "8d8b4da863d73cb6dd4ef4ac1aae325f099f6d0e47029f70fcabf6203bbd18ef",
     "LICENSE": "2f7bb7a29d9c8a34140b8fe9d44c61a74d84f55683fef02b25b8c2fc1ca4b027",
-    "README.md": "92a2228fe760a83c68cffb9e3915bd368a0f8e6282a549434b9e9061fc2dbfb2",
+    "README.md": "f9a413a295a9ac3f3ecca5354efda729358bbaf33d70779df79012b7fa8c69dc",
     "SPEC.md": "dfa788fda8ad5eff47d9051425cead5f559d4ecd275cf7cfc99ba6b9a5034e2b",
     "VERSION": "c2ef39e09593cca70be98a0fb0ab435b53e2eb3c3d4e812cd7d43794eafa7728",
     "bin/myhub": "14c0f94a6913692a0c6291ee577a5decc704ef2e1c25046e52287cd8b820891f",
@@ -36,6 +36,8 @@
     "content/wiki/people/CLAUDE.md": "3f13807ccb3625301a0076eaa685c4d3ff14472500bf5239261fba622483da84",
     "content/wiki/projects/CLAUDE.md": "7d4268d51839499cfa65daa805302f2c71ff7551256dd3ab2f130062208ddb9a",
     "content/wiki/timeline/CLAUDE.md": "5a246895df09530780317027383216c366a84c22b8884c632bad5e10f97de60a",
+    "docs/authoring.md": "1a971f7782da82d4177ba76160f9348cab1e588070b66bb7e62efacc18fca015",
+    "docs/voice.md": "33d5620e3c0dee4cf237f350689ca41c35ec203279821a69f8c54257194d99ce",
     "memory/MEMORY.md": "e50f419cfe51460b25fc8060a933a5daae6a0dceb87cb066473073b2318eca68"
   }
 }
