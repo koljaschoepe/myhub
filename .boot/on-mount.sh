@@ -6,8 +6,14 @@ set -euo pipefail
 MYHUB="$(cd "$(dirname "$0")/.." && pwd)"
 cd "$MYHUB"
 
-# 1. Manifest verification (Phase 4 will make this hard-fail on mismatch).
-# "$MYHUB/.boot/verify-manifest.sh" || { echo "myhub: manifest mismatch"; exit 1; }
+# 1. Manifest verification — tamper check. Non-fatal: mismatch is logged and
+#    surfaces as a notification, but we still boot so the user isn't stranded
+#    (they may have intentionally edited scripts).
+if [[ -x "$MYHUB/bin/myhub" && -f "$MYHUB/manifest.json" ]]; then
+    if ! "$MYHUB/bin/myhub" verify >/tmp/myhub-mount-verify.log 2>&1; then
+        osascript -e 'display notification "myhub: manifest mismatch — see /tmp/myhub-mount-verify.log" with title "myhub"' 2>/dev/null || true
+    fi
+fi
 
 # 2. Boot sound.
 SOUND="$MYHUB/.boot/assets/connect.aiff"

@@ -27,6 +27,21 @@ About to:
 The SSD contents and this Mac's Keychain are not touched.
 EOF
 
+# Manifest check — catch tampering before the Mac executes anything.
+# Non-fatal (user may have local modifications); warn + confirm on mismatch.
+if [[ -x "$MYHUB/bin/myhub" && -f "$MYHUB/manifest.json" ]]; then
+    echo
+    if ! "$MYHUB/bin/myhub" verify >/tmp/myhub-install-verify.log 2>&1; then
+        echo "⚠️  Manifest verification FAILED. The SSD differs from the shipped manifest."
+        echo "    This is expected after local edits (e.g. a compile pass). It could also"
+        echo "    indicate tampering. Log: /tmp/myhub-install-verify.log"
+        read -r -p "Continue anyway? [y/N] " force
+        [[ "$force" =~ ^[Yy]$ ]] || { echo "aborted."; exit 1; }
+    else
+        echo "✓ manifest verified (\$(wc -l </tmp/myhub-install-verify.log) entries)"
+    fi
+fi
+
 read -r -p "Continue? [y/N] " confirm
 [[ "$confirm" =~ ^[Yy]$ ]] || { echo "aborted."; exit 1; }
 

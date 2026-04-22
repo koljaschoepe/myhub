@@ -25,6 +25,8 @@ var Commands = []Command{
 	{"health", "verify the SSD has the expected structure + binaries", Health},
 	{"stats", "report file counts and sizes under content/ + memory/", Stats},
 	{"trust", "register this Mac as trusted in .boot/trusted-hosts.json", Trust},
+	{"manifest", "generate manifest.json (SHA-256 over scripts + binaries + templates)", Manifesto},
+	{"verify", "verify the SSD against manifest.json; exit 1 on any mismatch", Verify},
 }
 
 // ResolveRoot picks the SSD root from MYHUB_ROOT → binary location → cwd.
