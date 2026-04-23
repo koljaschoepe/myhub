@@ -34,7 +34,7 @@ def test_valid_name_persists_and_refreshes(tmp_root: Path) -> None:
     done = first.pending_handler(state, "Kolja")
 
     assert done.ok is True
-    assert done.refresh is True
+    assert done.refresh_full is True
     assert state.display_name == "Kolja"
 
     on_disk = cfg_mod.load(tmp_root)

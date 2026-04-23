@@ -113,7 +113,11 @@ def cmd_open(state: TuiState, args: list[str]) -> CommandResult:
 
     return CommandResult(
         ok=True,
-        lines=[f"[{SUCCESS}]→[/{SUCCESS}] Kontext: [bold]{target_name}[/bold]"],
+        # Empty lines — the inline divider the main loop prints via
+        # refresh=True already shows "myhub › name" in the header,
+        # no need to also print "→ Kontext: …" on its own line.
+        lines=[],
+        style="silent",
         refresh=True,
     )
 
@@ -269,7 +273,7 @@ def _new_description(state: TuiState, raw: str) -> CommandResult:
             f"[{SUCCESS}]✓[/{SUCCESS}] Projekt angelegt: [bold]{name}[/bold]",
             f"  [{DIM}]{proj_dir}[/{DIM}]",
         ],
-        refresh=True,
+        refresh_full=True,
     )
 
 
@@ -377,5 +381,5 @@ def _delete_confirm(state: TuiState, raw: str) -> CommandResult:
     return CommandResult(
         ok=True,
         lines=[f"[{ERROR}]✗[/{ERROR}] [bold]{target}[/bold] gelöscht."],
-        refresh=True,
+        refresh_full=True,
     )

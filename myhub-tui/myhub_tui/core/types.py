@@ -25,7 +25,12 @@ class CommandResult:
 
     ok              True = handler succeeded; False = user-surfaced error.
     lines           Output lines; rendered by the main loop via print_result.
-    refresh         True = re-render the dashboard header after this result.
+    refresh         True = print a slim inline divider with the current
+                    context (e.g. "myhub › proj @ main"). Use for state
+                    mutations that change context only (like /open).
+    refresh_full    True = re-render the full dashboard (logo + system
+                    box + project list). Use when the project list
+                    itself changed (e.g. /new final step, /delete).
     quit_app        True = exit the app after this result.
     launch_command  If set, the main loop will os.execvp this command and
                     hand over the TTY. Used for claude/lazygit launches.
@@ -46,6 +51,7 @@ class CommandResult:
     ok: bool
     lines: list[str] = field(default_factory=list)
     refresh: bool = False
+    refresh_full: bool = False
     quit_app: bool = False
     launch_command: str | None = None
     launch_cwd: Path | None = None

@@ -1,10 +1,12 @@
-"""Dashboard rendering: logo, greeting, system box, project list, prompt.
+"""Dashboard rendering: logo, status bar, greeting, system box, project
+panel, hint bar, prompt.
 
-Adapted from OpenAra's core/ui/dashboard.py. Slimmer than the upstream
-because myhub doesn't need Jetson/RPi temperature/GPU metrics, nor the
-Linux-only gh/docker status lines. Only RAM + Disk via cross-platform
-psutil are shown in the system box. Additional metrics join in later
-phases as commands are ported.
+Layout tiers (viewport widths):
+- FULL    ≥ 100 cols — 6-line ANSI-shadow logo + status bar + side-by-
+                       side system+today + panel'd project list + hint
+- MEDIUM  ≥ 78  cols — 2-line compact logo, stacked system/projects
+- COMPACT < 78  cols — single-line wordmark, mini bars only
+- SLIM    < 60  cols — COMPACT already caps here
 """
 
 from __future__ import annotations
@@ -12,10 +14,16 @@ from __future__ import annotations
 import datetime
 import html
 import shutil
+import socket
+import sys
 import time
 from typing import TYPE_CHECKING, Any
 
+from rich import box
 from rich.markup import escape as _escape_markup
+from rich.padding import Padding
+from rich.panel import Panel
+from rich.table import Table
 from rich.text import Text
 
 from myhub_tui.core.theme import (
@@ -27,8 +35,6 @@ from myhub_tui.core.theme import (
 )
 from myhub_tui.core.ui.output import (
     MAX_WIDTH,
-    TIER_FULL,
-    TIER_MEDIUM,
     VERSION,
     _CHECK,
     _DOT,
@@ -45,30 +51,44 @@ if TYPE_CHECKING:
     from myhub_tui.core.state import TuiState
 
 
+# Tier breakpoints — tuned up per Phase-8 audit: the old 60/78 was too
+# tight, real terminals today sit at 100+ cols.
+TIER_FULL_V3 = 100
+TIER_MEDIUM_V3 = 78
+
+
 # ---------------------------------------------------------------------------
-# Logo — same 2-line block-letter aesthetic as OpenAra, but spells MYHUB.
-# Gradient is applied per-line via LOGO_GRADIENT.
+# Logos — tier-scaled
 # ---------------------------------------------------------------------------
 
-LOGO = [
-    "  █▀▄▀█ █▄█ █░█ █░█ █▀▄",
-    "  █░▀░█ ░█░ █▀█ █▄█ █▀▄",
+# FULL-tier logo: "ANSI Shadow"-style for impact at ≥100 cols. 6 lines,
+# 46 chars wide. Gradient is applied per column so the cyan→indigo wash
+# runs horizontally across each letter.
+LOGO_FULL = [
+    "███╗   ███╗██╗   ██╗██╗  ██╗██╗   ██╗██████╗ ",
+    "████╗ ████║╚██╗ ██╔╝██║  ██║██║   ██║██╔══██╗",
+    "██╔████╔██║ ╚████╔╝ ███████║██║   ██║██████╔╝",
+    "██║╚██╔╝██║  ╚██╔╝  ██╔══██║██║   ██║██╔══██╗",
+    "██║ ╚═╝ ██║   ██║   ██║  ██║╚██████╔╝██████╔╝",
+    "╚═╝     ╚═╝   ╚═╝   ╚═╝  ╚═╝ ╚═════╝ ╚═════╝ ",
+]
+
+# MEDIUM-tier logo: 2-line compact. Same pattern we shipped in v3 Phase 3.
+LOGO_MEDIUM = [
+    "█▀▄▀█ █▄█ █░█ █░█ █▀▄",
+    "█░▀░█ ░█░ █▀█ █▄█ █▀▄",
 ]
 
 
 # ---------------------------------------------------------------------------
-# Data helpers
+# Greeting
 # ---------------------------------------------------------------------------
 
 
 def _greeting(user: str) -> str:
-    """Time-aware German greeting."""
     hour = datetime.datetime.now().hour
     name = user.strip()
-    if not name:
-        suffix = "."
-    else:
-        suffix = f", {name}."
+    suffix = f", {name}." if name else "."
     if hour < 2:
         return f"Späte Session{suffix}"
     if hour < 6:
@@ -83,7 +103,6 @@ def _greeting(user: str) -> str:
 
 
 def _human_gib(bytes_: int) -> str:
-    """Byte count → '12G' / '740M' terse-units."""
     if bytes_ <= 0:
         return "0"
     units = [("T", 1024**4), ("G", 1024**3), ("M", 1024**2), ("K", 1024)]
@@ -94,13 +113,6 @@ def _human_gib(bytes_: int) -> str:
 
 
 def _system_info(state: TuiState) -> dict[str, Any]:
-    """Gather minimal system info (RAM + Disk against SSD root) via psutil.
-
-    Intentionally smaller than OpenAra's version: no temp, no GPU, no
-    throttle detection, no docker/github status, no network interface
-    probe. macOS doesn't surface these the same way Linux does, and
-    myhub doesn't currently need them. Later phases can grow this.
-    """
     try:
         import psutil
     except ImportError:
@@ -127,205 +139,295 @@ def _system_info(state: TuiState) -> dict[str, Any]:
 
 
 def _project_list(state: TuiState) -> list[str]:
-    """Return active project names. Stub for Phase 3; Phase 4 wires the
-    real projects.yaml registry.
-    """
     return sorted(state.registry.keys())
 
 
 # ---------------------------------------------------------------------------
-# Dashboard body
+# Status bar (TOP)
 # ---------------------------------------------------------------------------
 
 
-def _build_full_dashboard(state: TuiState, content_w: int) -> list[str]:
-    """Assemble the complete dashboard body (below the logo)."""
-    info = _system_info(state)
-    lines: list[str] = []
-    dot_sep = f" {_DOT} "
-
-    # --- Greeting ---
-    lines.append("")
-    lines.append(f"  {_greeting(state.display_name or state.user)}")
-
-    # --- Status subtitle: version · hostname (if any) ---
-    status_parts: list[str] = [VERSION]
-    import socket
-
+def _status_bar_text(state: TuiState) -> str:
+    """Build the top-of-screen status line — Claude-Code-style."""
+    host = ""
     try:
         host = socket.gethostname()
-        if host:
-            status_parts.append(host)
     except OSError:
         pass
-    joined = dot_sep.join(status_parts)
-    lines.append(f"  [{DIM}]{joined}[/{DIM}]")
-    lines.append("")
 
-    # --- System box ---
-    box_w = min(content_w - 2, 46)
-    bar_w = max(8, min(10, box_w // 5))
-    _corner_tl = "╭"
-    _corner_tr = "╮"
-    _corner_bl = "╰"
-    _corner_br = "╯"
-    _vline = "│"
+    py = f"py{sys.version_info.major}.{sys.version_info.minor}"
+    projs = len(_project_list(state))
+    path_display = str(state.root).replace(str(_home()), "~", 1)
+    if len(path_display) > 42:
+        path_display = "…" + path_display[-41:]
 
-    box_top = f"  [{DIM}]{_corner_tl}{_hline(box_w)}{_corner_tr}[/{DIM}]"
-    box_bot = f"  [{DIM}]{_corner_bl}{_hline(box_w)}{_corner_br}[/{DIM}]"
-    lines.append(box_top)
-
-    def _box_row_closed(content: str) -> str:
-        vis = _vis_len(content)
-        if vis > box_w:
-            try:
-                t = Text.from_markup(content)
-                t.truncate(box_w - 1)
-                content = f"[{DIM}]{_escape_markup(t.plain)}…[/{DIM}]"
-            except Exception:
-                content = content[: box_w - 1] + "…"
-            vis = _vis_len(content)
-        pad_n = max(0, box_w - vis)
-        return f"  [{DIM}]{_vline}[/{DIM}]{content}{' ' * pad_n}[{DIM}]{_vline}[/{DIM}]"
-
-    def _metric_row(label: str, bar: str, detail: str) -> str:
-        bar_vis = _vis_len(bar)
-        used = 2 + 5 + bar_vis + 2
-        avail = box_w - used
-        detail_vis = _vis_len(detail)
-        if detail_vis > avail and avail > 1:
-            t = Text.from_markup(detail)
-            t.truncate(max(1, avail - 1))
-            detail = t.plain + "…"
-        return _box_row_closed(f"  {label:<5}{bar}  [{DIM}]{detail}[/{DIM}]")
-
-    ram_pct = float(info.get("ram_pct", 0) or 0)
-    lines.append(_metric_row("RAM", _bar(ram_pct, bar_w), info["ram"]))
-
-    disk_pct = float(info.get("disk_pct", 0) or 0)
-    lines.append(_metric_row("Disk", _bar(disk_pct, bar_w), info["disk"]))
-
-    lines.append(box_bot)
-
-    # --- Projects ---
-    lines.append("")
-    lines.append("  [bold]Projekte[/bold]")
-    lines.append("")
-
-    projects = _project_list(state)
-    for i, name in enumerate(projects, 1):
-        safe_name = _escape_markup(name)
-        disp_name = safe_name if len(safe_name) <= 28 else safe_name[:27] + "…"
-        lines.append(f"  [{PRIMARY}]{i}[/{PRIMARY}]  {disp_name}")
-
-    if not projects:
-        lines.append(f"  [{DIM}]Noch keine Projekte.[/{DIM}]")
-        lines.append(f"  [{DIM}]Tippe 'new' um eins anzulegen.[/{DIM}]")
-
-    # --- Contextual hints ---
-    lines.append("")
-    for hint in _build_hints(projects):
-        lines.append(f"  [{DIM}]{hint}[/{DIM}]")
-
-    return lines
-
-
-def _build_hints(projects: list[str]) -> list[str]:
-    hints: list[str] = []
-    if not projects:
-        hints.append("Tippe 'new' um ein Projekt anzulegen, oder 'help' für alle Kommandos.")
+    if state.active_project:
+        lead = f"[bold {PRIMARY}]myhub[/bold {PRIMARY}] › [bold]{_escape_markup(state.active_project)}[/bold]"
     else:
-        hints.append("Öffne ein Projekt per Name oder Nummer.")
-        hints.append("'help' listet alle Kommandos, 'quit' beendet myhub.")
-    return hints
+        lead = f"[bold {PRIMARY}]myhub[/bold {PRIMARY}]"
+
+    parts = [
+        lead,
+        f"[{DIM}]{_escape_markup(path_display)}[/{DIM}]",
+        f"[{DIM}]{VERSION}[/{DIM}]",
+        f"[{DIM}]{py}[/{DIM}]",
+    ]
+    if host:
+        parts.append(f"[{DIM}]{_escape_markup(host)}[/{DIM}]")
+    parts.append(f"[{DIM}]{projs} Projekte[/{DIM}]")
+
+    return f" [{DIM}]{_DOT}[/{DIM}] ".join(parts)
+
+
+def _home():
+    from pathlib import Path
+
+    return Path.home()
+
+
+def _render_status_bar(state: TuiState) -> None:
+    """Print a single-line status bar at the top, flanked by dim rules."""
+    w = min(console.width - 2, MAX_WIDTH)
+    inner = _status_bar_text(state)
+    inner_vis = _vis_len(inner)
+    left_rule = _dim_hline(2)
+    right_space = max(3, w - inner_vis - 6)
+    right_rule = _dim_hline(right_space)
+    console.print(f" {left_rule} {inner} {right_rule}", highlight=False)
 
 
 # ---------------------------------------------------------------------------
-# Header rendering — tier dispatch
+# Hint bar (BOTTOM) — persistent keybinding footer
+# ---------------------------------------------------------------------------
+
+
+def render_hint_bar() -> None:
+    """Print a single-line hint bar just above the prompt. Printed once
+    per turn by app.run() before session.prompt().
+    """
+    pad = " " * _frame_left_pad()
+    hints = (
+        f"[{DIM}]/ [/{DIM}][bold {PRIMARY}]Kommandos[/bold {PRIMARY}]"
+        f"  [{DIM}]·[/{DIM}]  [bold {PRIMARY}]Tab[/bold {PRIMARY}] [{DIM}]vervollst.[/{DIM}]"
+        f"  [{DIM}]·[/{DIM}]  [bold {PRIMARY}]↵[/bold {PRIMARY}] [{DIM}]ausführen[/{DIM}]"
+        f"  [{DIM}]·[/{DIM}]  [bold {PRIMARY}]^C[/bold {PRIMARY}] [{DIM}]beenden[/{DIM}]"
+    )
+    console.print(f"{pad}{hints}", highlight=False)
+
+
+# ---------------------------------------------------------------------------
+# Logo renderer — gradient per column
+# ---------------------------------------------------------------------------
+
+
+def _render_logo(state: TuiState, tier: str) -> None:
+    """Print the appropriate-tier logo with gradient colors."""
+    pad = content_pad()
+    if tier == "compact":
+        # One-line wordmark with column gradient.
+        wordmark = "myhub"
+        painted = []
+        grad = LOGO_GRADIENT
+        for i, ch in enumerate(wordmark):
+            idx = i * (len(grad) - 1) // max(len(wordmark) - 1, 1)
+            painted.append(f"[bold {grad[idx]}]{ch}[/bold {grad[idx]}]")
+        console.print(f"{pad}{''.join(painted)}", highlight=False)
+        return
+
+    lines = LOGO_FULL if tier == "full" else LOGO_MEDIUM
+    grad = LOGO_GRADIENT
+    animate = state.first_run and tier == "full"
+    for _, line in enumerate(lines):
+        # Per-column gradient — cyan on left, indigo on right.
+        n = len(line)
+        segs: list[str] = []
+        for col, ch in enumerate(line):
+            idx = col * (len(grad) - 1) // max(n - 1, 1)
+            color = grad[idx]
+            segs.append(f"[bold {color}]{ch}[/bold {color}]")
+        console.print(f"{pad}{''.join(segs)}", highlight=False)
+        if animate:
+            time.sleep(0.04)
+
+
+# ---------------------------------------------------------------------------
+# Panels — greeting, system, today, projects
+# ---------------------------------------------------------------------------
+
+
+def _render_greeting_line(state: TuiState) -> None:
+    pad = content_pad()
+    console.print(
+        f"{pad}[bold]{_greeting(state.display_name or state.user)}[/bold]",
+        highlight=False,
+    )
+
+
+def _render_system_panel(state: TuiState, width: int) -> Panel:
+    info = _system_info(state)
+    ram_pct = float(info.get("ram_pct", 0) or 0)
+    disk_pct = float(info.get("disk_pct", 0) or 0)
+    bar_w = 10
+    table = Table(show_header=False, box=None, padding=(0, 1), expand=False)
+    table.add_column(style="bold", no_wrap=True)
+    table.add_column(no_wrap=True)
+    table.add_column(style=DIM, no_wrap=True)
+    table.add_row("RAM", _bar(ram_pct, bar_w), info["ram"])
+    table.add_row("Disk", _bar(disk_pct, bar_w), info["disk"])
+    return Panel(
+        table,
+        title=f"[bold {PRIMARY}]System[/bold {PRIMARY}]",
+        title_align="left",
+        border_style="dim",
+        box=box.ROUNDED,
+        padding=(0, 1),
+        width=width,
+    )
+
+
+def _render_projects_panel(state: TuiState, width: int) -> Panel:
+    projs = _project_list(state)
+    table = Table(show_header=False, box=None, padding=(0, 1), expand=True)
+    table.add_column(style=f"bold {PRIMARY}", no_wrap=True, width=3)
+    table.add_column(no_wrap=False)
+    table.add_column(style=DIM, no_wrap=True, justify="right")
+
+    if not projs:
+        table.add_row(
+            f"[{DIM}]—[/{DIM}]",
+            f"[{DIM}]Noch keine Projekte.[/{DIM}]",
+            f"[{DIM}]/new[/{DIM}]",
+        )
+    else:
+        for i, name in enumerate(projs, 1):
+            safe_name = _escape_markup(name)
+            record = state.registry.get(name)
+            meta = ""
+            if record and record.last_opened_at:
+                ts = record.last_opened_at.split("T")[0] if "T" in record.last_opened_at else ""
+                meta = f"{ts}"
+            if state.active_project == name:
+                row_name = f"[bold {SUCCESS}]{safe_name}[/bold {SUCCESS}] [{SUCCESS}]{_CHECK}[/{SUCCESS}]"
+            else:
+                row_name = safe_name
+            table.add_row(str(i), row_name, meta)
+
+    return Panel(
+        table,
+        title=f"[bold {PRIMARY}]Projekte[/bold {PRIMARY}]",
+        title_align="left",
+        border_style="dim",
+        box=box.ROUNDED,
+        padding=(0, 1),
+        width=width,
+    )
+
+
+# ---------------------------------------------------------------------------
+# Tier dispatch
 # ---------------------------------------------------------------------------
 
 
 def _print_header_full(state: TuiState) -> None:
-    w = _adaptive_width()
-    content_w = w - 6
-    pad = content_pad()
+    """≥100 cols: status bar + big logo + greeting + panels."""
+    w = min(console.width - 4, MAX_WIDTH + 10)
+    left_pad = _frame_left_pad() + 2
 
+    _render_status_bar(state)
+    console.print()
+    _render_logo(state, "full")
+    console.print()
+    _render_greeting_line(state)
     console.print()
 
-    animate = state.first_run
-    for i, line in enumerate(LOGO):
-        color = LOGO_GRADIENT[i % len(LOGO_GRADIENT)]
-        console.print(f"{pad}{line}", style=f"bold {color}", highlight=False)
-        if animate:
-            time.sleep(0.06)
-
-    for line in _build_full_dashboard(state, content_w):
-        console.print(f"{pad}{line}", highlight=False)
+    # System panel left-aligned, then projects panel below. Two-column
+    # layout only when there's room for it (≥110 cols).
+    sys_panel = _render_system_panel(state, width=min(48, w // 2 - 2))
+    proj_panel = _render_projects_panel(state, width=w)
+    console.print(Padding(sys_panel, (0, 0, 0, left_pad)), highlight=False)
+    console.print()
+    console.print(Padding(proj_panel, (0, 0, 0, left_pad)), highlight=False)
     console.print()
 
 
 def _print_header_medium(state: TuiState) -> None:
-    content_w = min(console.width - 6, MAX_WIDTH - 6)
-    pad = content_pad()
+    """≥78 cols: compact logo + panels."""
+    w = min(console.width - 4, MAX_WIDTH)
+    left_pad = _frame_left_pad() + 2
 
+    _render_status_bar(state)
     console.print()
-    for i, line in enumerate(LOGO):
-        color = LOGO_GRADIENT[i % len(LOGO_GRADIENT)]
-        console.print(f"{pad}{line}", style=f"bold {color}", highlight=False)
-    for line in _build_full_dashboard(state, content_w):
-        console.print(f"{pad}{line}", highlight=False)
+    _render_logo(state, "medium")
+    console.print()
+    _render_greeting_line(state)
+    console.print()
+
+    sys_panel = _render_system_panel(state, width=w)
+    proj_panel = _render_projects_panel(state, width=w)
+    console.print(Padding(sys_panel, (0, 0, 0, left_pad)), highlight=False)
+    console.print()
+    console.print(Padding(proj_panel, (0, 0, 0, left_pad)), highlight=False)
     console.print()
 
 
 def _print_header_compact(state: TuiState) -> None:
+    """<78 cols: minimalist wordmark, mini bars, text list."""
     pad = " " * _frame_left_pad()
     info = _system_info(state)
-    console.print()
-    console.print(
-        f"{pad}[bold {PRIMARY}]myhub[/bold {PRIMARY}] [{DIM}]{VERSION}[/{DIM}]",
-        highlight=False,
-    )
     ram_pct = float(info.get("ram_pct", 0) or 0)
     disk_pct = float(info.get("disk_pct", 0) or 0)
+
+    console.print()
+    _render_logo(state, "compact")
+    console.print(f"{pad}[{DIM}]{VERSION}[/{DIM}]", highlight=False)
+    console.print()
+    console.print(f"{pad}[bold]{_greeting(state.display_name or state.user)}[/bold]")
+    console.print()
     console.print(
-        f"{pad}RAM {_bar(ram_pct, 6)} [{DIM}]{info['ram']}[/{DIM}]", highlight=False
+        f"{pad}RAM {_bar(ram_pct, 6)} [{DIM}]{info['ram']}[/{DIM}]",
+        highlight=False,
     )
     console.print(
-        f"{pad}Disk {_bar(disk_pct, 6)} [{DIM}]{info['disk']}[/{DIM}]", highlight=False
+        f"{pad}Disk {_bar(disk_pct, 6)} [{DIM}]{info['disk']}[/{DIM}]",
+        highlight=False,
     )
-    projects = _project_list(state)
-    if projects:
-        console.print(f"{pad}Projekte: {len(projects)}", highlight=False)
+    console.print()
+    projs = _project_list(state)
+    if projs:
+        console.print(f"{pad}[bold]Projekte:[/bold] {len(projs)}")
+        for i, name in enumerate(projs, 1):
+            marker = f"[{SUCCESS}]{_CHECK}[/{SUCCESS}]" if state.active_project == name else " "
+            console.print(f"{pad}  [{PRIMARY}]{i}[/{PRIMARY}]  {_escape_markup(name)} {marker}")
+    else:
+        console.print(f"{pad}[{DIM}]Keine Projekte — /new legt eins an.[/{DIM}]")
     console.print()
 
 
 def print_header(state: TuiState, full: bool = True) -> None:
-    """Render the dashboard header. full=True at startup / context-switch;
-    full=False for a slim inline divider between commands.
+    """Render the dashboard. full=True at startup / when the project
+    list changes; full=False for an inline divider between turns
+    (context-switch without the whole dashboard scrolling by).
     """
     if not full:
         pad = content_pad()
         w = _adaptive_width() - 6
-        parts: list[str] = []
         if state.active_project:
-            name = _escape_markup(state.active_project)
-            parts.append(f"[bold]{name}[/bold]")
+            label = f"[bold {PRIMARY}]myhub[/bold {PRIMARY}] › [bold]{_escape_markup(state.active_project)}[/bold]"
         else:
-            parts.append(f"[{DIM}]main[/{DIM}]")
-        dot_sep = f" [{DIM}]{_DOT}[/{DIM}] "
-        title_len = _vis_len(dot_sep.join(parts)) + 2
-        side = max(1, (w - title_len) // 2)
-        right_side = max(1, w - title_len - side)
-        joined = dot_sep.join(parts)
+            label = f"[{DIM}]myhub (main)[/{DIM}]"
+        label_len = _vis_len(label) + 2
+        side = max(1, (w - label_len) // 2)
+        right = max(1, w - label_len - side)
         console.print(
-            f"{pad}{_dim_hline(side)} {joined} {_dim_hline(right_side)}",
+            f"{pad}{_dim_hline(side)} {label} {_dim_hline(right)}",
             highlight=False,
         )
         return
 
-    if console.width >= TIER_FULL:
+    width = console.width
+    if width >= TIER_FULL_V3:
         _print_header_full(state)
-    elif console.width >= TIER_MEDIUM:
+    elif width >= TIER_MEDIUM_V3:
         _print_header_medium(state)
     else:
         _print_header_compact(state)
@@ -339,11 +441,11 @@ def print_header(state: TuiState, full: bool = True) -> None:
 def build_prompt(
     state: TuiState, wizard_step: tuple[int, int, str] | None = None
 ) -> str:
-    """Returns prompt_toolkit HTML markup (NOT Rich markup).
+    """prompt_toolkit HTML (not Rich markup).
 
-    Format:
-        main:    "  myhub > "
-        project: "  myhub (projname) > "
+    Styles:
+        main:    "  myhub ❯ "
+        project: "  myhub › projname ❯ "
         wizard:  "  [2/3] Label > "
     """
     pad = " " * (_frame_left_pad() + 2)
@@ -351,15 +453,21 @@ def build_prompt(
     if wizard_step:
         cur, total, label = wizard_step
         safe = html.escape(label)
-        return f"{pad}<style fg='yellow'>[{cur}/{total}]</style> {safe} &gt; "
+        return (
+            f"{pad}<style fg='yellow'>[{cur}/{total}]</style>"
+            f" {safe} <b>❯</b> "
+        )
 
     if state.active_project:
         safe = html.escape(state.active_project)
         return (
-            f"{pad}<b><style fg='ansicyan'>myhub</style></b> "
-            f"<style fg='ansiblack'>(</style>"
-            f"<style fg='ansicyan'>{safe}</style>"
-            f"<style fg='ansiblack'>)</style> &gt; "
+            f"{pad}<b><style fg='ansicyan'>myhub</style></b>"
+            f" <style fg='ansiblack'>›</style>"
+            f" <b>{safe}</b>"
+            f" <style fg='ansicyan'><b>❯</b></style> "
         )
 
-    return f"{pad}<b><style fg='ansicyan'>myhub</style></b> &gt; "
+    return (
+        f"{pad}<b><style fg='ansicyan'>myhub</style></b>"
+        f" <style fg='ansicyan'><b>❯</b></style> "
+    )

@@ -48,8 +48,14 @@ read -r -p "Continue? [y/N] " confirm
 # --- 1. Install host-side wrapper + LaunchAgent ---
 # macOS 14+ denies launchd-spawned shells access to external volumes
 # (Operation not permitted, including `ls`). Workaround: launchd runs a
-# tiny wrapper living on the host ($HOME), which delegates to Terminal.app
-# via AppleScript — Terminal's own TCC scope covers the SSD.
+# tiny wrapper living on the host ($HOME), which delegates to Terminal.app.
+#
+# We use `open -a Terminal "$SSD/.boot/on-mount.command"` — the .command
+# suffix is load-bearing: macOS treats these as Terminal-executable
+# scripts, runs them in exactly ONE new window, and Terminal's TCC scope
+# covers the SSD. osascript's `tell Terminal ... do script` opens a
+# SECOND default window whenever Terminal wasn't already running — we
+# used to ship that, it caused the "zwei Terminals" bug.
 WRAPPER_DST="$HOME/.myhub-mount-wrapper.sh"
 cat > "$WRAPPER_DST" <<WRAPPER
 #!/bin/bash
@@ -57,14 +63,16 @@ cat > "$WRAPPER_DST" <<WRAPPER
 set -euo pipefail
 SSD="$MYHUB"
 [[ -d "\$SSD" ]] || exit 0
-osascript <<APPLESCRIPT
-tell application "Terminal"
-    activate
-    do script "cd '\$SSD' && ./.boot/on-mount.sh"
-end tell
-APPLESCRIPT
+exec /usr/bin/open -a Terminal "\$SSD/.boot/on-mount.command"
 WRAPPER
 chmod +x "$WRAPPER_DST"
+
+# .command file is what Terminal.app actually opens. We ship a symlink
+# to on-mount.sh (in-repo file, chmod +x) so the content stays tracked
+# in git while Terminal sees the .command suffix it requires.
+if [[ ! -e "$MYHUB/.boot/on-mount.command" ]]; then
+    ln -s on-mount.sh "$MYHUB/.boot/on-mount.command"
+fi
 
 mkdir -p "$(dirname "$PLIST_DST")"
 # plist.template still uses __MYHUB_PATH__ for `on-mount.sh` — we rewrite it

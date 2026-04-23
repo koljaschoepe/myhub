@@ -81,5 +81,5 @@ def _capture_name(state: TuiState, raw: str) -> CommandResult:
             "",
             f"[{DIM}]Tipp: '/help' zeigt alle Kommandos.[/{DIM}]",
         ],
-        refresh=True,
+        refresh_full=True,
     )

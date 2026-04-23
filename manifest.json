@@ -1,11 +1,12 @@
 {
   "$schema_version": 1,
-  "generated_at": "2026-04-23T21:22:36Z",
+  "generated_at": "2026-04-23T21:44:25Z",
   "version": "0.1.0-dev",
   "hashes": {
     ".boot/assets/.gitkeep": "7d2c3bc26d1db40f226648cc7b445f8663da746d68dc1d1ac4184bc8c3d7776a",
-    ".boot/install.command": "84388a7e6271dd39888b5d0330a968935c040f7d2cac5596c378226aeb94de45",
+    ".boot/install.command": "8626c144c6568ac5be1c6321390c54e080b5f3edb6050fb21102501abca6f2a6",
     ".boot/launcher.sh": "6609a28599b45b8736d74bd38ec861137413c2e53b17d8cc477eac2e8309677e",
+    ".boot/on-mount.command": "199abf6d2c15c552c462598ca6795b6811f25204f4d293e195ec07812943aaa6",
     ".boot/on-mount.sh": "199abf6d2c15c552c462598ca6795b6811f25204f4d293e195ec07812943aaa6",
     ".boot/plist.template": "950d732ffea5621187e1ca1afa4c3031b106772bff4709456efc9f083cf5226d",
     ".boot/preflight.sh": "b280bb48ba96c496dd505409b0376b6bfe81ef098bff97c2c3c39294f5611c01",
