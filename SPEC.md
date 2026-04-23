@@ -1,18 +1,26 @@
 # SPEC — myhub
 
-> **Codename:** `myhub` · **Target:** macOS 14+ (Apple Silicon only for MVP) · **License:** MIT · **Status:** Architecture spec v2, pre-implementation · **Repo:** [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) (public from day one)
+> **Codename:** `myhub` · **Target:** macOS 14+ (Apple Silicon only for MVP) · **License:** MIT · **Status:** Architecture spec v3 (Python TUI port) · **Repo:** [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) (public from day one)
 
-A pluggable personal AI: stick in the drive, a TUI project hub boots in a terminal, a Jarvis-like voice greets you, and Claude Code is one keystroke away in any of your projects — with full context already loaded.
+A pluggable personal AI: stick in the drive, a TUI project hub boots in a terminal, greets you with a context-aware briefing, and Claude Code is one keystroke away in any of your projects — with full context already loaded.
 
 ---
 
-## 0. What Changed in v2
+## 0. What Changed in v3 (Python TUI port, supersedes v2)
 
-v2 inserts a **TUI project hub** between "SSD mount" and "Claude Code session." v1 had the launcher `exec` Claude directly. v2 launches `myhub-tui` (Bubble Tea, Go), which shows the Jarvis greeting, a list of SSD-resident projects, and per-project status. Claude Code is launched as a child process via `tea.ExecProcess` — when you Ctrl-D out of Claude, you return to the hub.
+**v3 replaces the Go/Bubble-Tea TUI with a Python/`prompt_toolkit`+`rich` TUI ported from [OpenAra](https://github.com/koljaschoepe/OpenAra).** The v2 Go TUI was archived; the Go code that survives is the maintenance CLI at `myhub-cli/` (the `bin/myhub` binary with `verify`, `compile`, `stats`, `trust`, `manifest`, `health` subcommands). The visible TUI — logo, greeting, projects list, command dispatch — is now `myhub-tui/myhub_tui/` (Python, 14 commands, ~2100 LOC).
 
-Driver: the v1 flow was great for one project but didn't scale to the reality of a vault with many parallel projects. The TUI also gives us a place to render richer status (git, recent activity, unread deltas) and to host a first-class **Interview primitive** for structured onboarding and wizards — a principle applied everywhere in this project (see §2.8, §12).
+**Why the port.** The Go TUI worked but diverged from the OpenAra UX the user already loved. A full fork of OpenAra would have dragged in ~60 % Linux-server features that make no sense on a macOS SSD (Jetson/RPi detection, fail2ban, n8n Docker, Tailscale, playwright). Porting only the relevant ~30 % (theme, router, wizard pattern, project registry, dashboard rendering) keeps myhub focused — OpenAra stays its own project.
 
-Inspiration: [OpenAra](https://github.com/koljaschoepe/OpenAra) — sibling project with the same TUI-launcher pattern for ARM64 headless servers. Port the registry + exec-launch patterns, inherit the visual identity, skip the Python/Linux-specific bits.
+**Launch model change.** `tea.ExecProcess` (which pauses the Go TUI while Claude runs and re-renders after) is replaced by `os.execvp` — the Python process becomes Claude. A sentinel file at `.boot/.respawn` tells `launcher.sh`'s re-spawn loop to restart the TUI after Claude exits. Same UX, simpler primitives, matches OpenAra directly.
+
+**SSD-portable Python runtime.** `runtime/python/` holds a relocatable CPython (python-build-standalone, Astral) bootstrapped by `tooling/install-python.sh`. `bin/uv` (bootstrapped by `tooling/install-uv.sh`) manages dependencies into the runtime's site-packages. No host Python is required.
+
+### What v2 kept from v1
+v2 had introduced the TUI-between-mount-and-claude pattern. v3 preserves that architecture: launchd → Terminal.app → on-mount.sh → launcher.sh (re-spawn loop) → TUI → Claude. Only the TUI's language and exec mechanism changed.
+
+### Inspiration
+[OpenAra](https://github.com/koljaschoepe/OpenAra) — sibling project for ARM64 headless servers. v3 shares its visual identity, command registry, pending-handler wizard pattern, and os.execvp launch model. Port not fork: OpenAra evolves separately.
 
 ---
 
@@ -56,9 +64,9 @@ Inspiration: [OpenAra](https://github.com/koljaschoepe/OpenAra) — sibling proj
 ```
 ┌────────────────────────────────────────────────────────────────────┐
 │ LAYER 5 · INTERACTION                                              │
-│  myhub-tui (Bubble Tea · Go)  ← mount entrypoint                   │
-│    · proactive briefer panel  · project list · interview primitive │
-│  Claude Code CLI  ← launched per project via tea.ExecProcess       │
+│  myhub-tui (Python · prompt_toolkit + rich)  ← mount entrypoint    │
+│    · proactive briefer panel  · project list · wizard primitive    │
+│  Claude Code CLI  ← launched per project via os.execvp (respawn)   │
 ├────────────────────────────────────────────────────────────────────┤
 │ LAYER 4 · PERSONA / CONTEXT                                        │
 │  root CLAUDE.md · per-domain CLAUDE.md · memory/ · agents/         │
@@ -74,7 +82,9 @@ Inspiration: [OpenAra](https://github.com/koljaschoepe/OpenAra) — sibling proj
 │  content/notes, content/projects, content/communication            │
 ├────────────────────────────────────────────────────────────────────┤
 │ LAYER 0 · RUNTIME                                                  │
-│  Claude Code binary · myhub-tui binary · fswatch (optional)        │
+│  Claude Code binary · myhub-tui launcher (bash)                    │
+│  runtime/python/ (python-build-standalone, SSD-portable)           │
+│  bin/uv (dep management) · bin/myhub (Go maintenance CLI)          │
 └────────────────────────────────────────────────────────────────────┘
          ▲
          │ triggered by
@@ -108,24 +118,59 @@ No LanceDB, no Tantivy, no Ollama in MVP. Wiki-based retrieval (see §8). All st
 │       └── icon.icns                ← drive icon
 │
 ├── bin/                             ← all runtimes live here; host needs nothing
-│   ├── claude                       ← Claude Code binary (arm64)
-│   ├── myhub-tui                    ← the hub TUI (Bubble Tea, static arm64 ~12 MB)
-│   ├── myhub                        ← thin CLI wrapper (maintenance commands)
+│   ├── claude                       ← Claude Code binary (arm64, release-shipped)
+│   ├── myhub-tui                    ← bash launcher for the Python TUI (committed)
+│   ├── myhub                        ← Go maintenance CLI (verify/compile/stats/…)
+│   ├── uv / uvx                     ← dep manager, bootstrapped (gitignored)
 │   ├── rg                           ← ripgrep (optional)
-│   └── fswatch                      ← filesystem watcher (for compile triggers)
+│   └── fswatch                      ← filesystem watcher (optional)
 │
-├── myhub-tui/                       ← GO SOURCE for the TUI (committed to repo)
-│   ├── cmd/myhub-tui/main.go        ← entry point
-│   ├── cmd/myhub/main.go            ← CLI wrapper
+├── runtime/                         ← SSD-portable Python (gitignored)
+│   └── python/                      ← python-build-standalone, relocatable
+│
+├── myhub-tui/                       ← PYTHON TUI (v3 — replaces the Go TUI)
+│   ├── pyproject.toml               ← entry point: myhub-tui = myhub_tui.app:run
+│   ├── myhub_tui/
+│   │   ├── app.py                   ← main run loop, dispatch, wizard pending
+│   │   ├── core/
+│   │   │   ├── theme.py             ← palette, glyphs, gradient (OpenAra-inherited)
+│   │   │   ├── registry.py          ← CommandSpec + Registry (resolve+fuzzy)
+│   │   │   ├── router.py            ← build_registry() wires all commands
+│   │   │   ├── state.py             ← TuiState dataclass
+│   │   │   ├── projects.py          ← memory/projects.yaml + scan_filesystem
+│   │   │   ├── config.py            ← memory/config.toml (user, editor)
+│   │   │   ├── onboarding.py        ← first-run name wizard
+│   │   │   ├── types.py             ← CommandResult, PendingHandler
+│   │   │   └── ui/
+│   │   │       ├── dashboard.py     ← logo, system box, project list, prompt
+│   │   │       ├── output.py        ← tiers, print helpers, spinner
+│   │   │       └── panels.py        ← _bar, print_panel, print_kv, print_step
+│   │   └── commands/
+│   │       ├── project.py           ← open, info, new, delete, repos
+│   │       ├── ai.py                ← claude (os.execvp + respawn-marker)
+│   │       ├── brief.py             ← headless claude -p --agent briefer
+│   │       ├── git.py               ← pull/push/log/status
+│   │       ├── lazygit.py           ← exec-replace to lazygit
+│   │       ├── compile.py           ← shell-out to `myhub compile`
+│   │       ├── verify.py            ← shell-out to `myhub verify`
+│   │       ├── stats.py             ← shell-out to `myhub stats`
+│   │       └── meta.py              ← help, quit
+│   └── tests/                       ← pytest (registry, config, projects, onboarding)
+│
+├── myhub-cli/                       ← Go SOURCE for bin/myhub (maintenance CLI only)
+│   ├── cmd/myhub/main.go
 │   ├── internal/
-│   │   ├── ui/                      ← Bubble Tea models (dashboard, detail, interview)
-│   │   ├── theme/                   ← Lipgloss palette + glyphs (OpenAra-inherited)
-│   │   ├── projects/                ← registry (YAML) + atomic write + git info
-│   │   ├── briefer/                 ← headless `claude -p` invocation for greeting
-│   │   ├── interview/               ← structured-question primitive (§12)
-│   │   └── launch/                  ← tea.ExecProcess wrapper for Claude
-│   ├── go.mod
-│   └── Makefile                     ← `make build` → bin/myhub-tui
+│   │   ├── myhubcli/                ← compile/health/stats/trust/manifest/verify
+│   │   ├── projects/                ← registry YAML (shared format with Python TUI)
+│   │   ├── config/                  ← TOML reader
+│   │   └── stats/                   ← SSD usage snapshots
+│   └── go.mod
+│
+├── tooling/
+│   ├── install-python.sh            ← bootstraps runtime/python/
+│   ├── install-uv.sh                ← bootstraps bin/uv, bin/uvx
+│   ├── install-go.sh                ← bootstraps tooling/go/ (for myhub-cli builds)
+│   └── cache/                       ← download cache (gitignored)
 │
 ├── .claude/                         ← CLAUDE_CONFIG_DIR points here
 │   ├── settings.json                ← permissions, hooks
@@ -207,15 +252,15 @@ No LanceDB, no Tantivy, no Ollama in MVP. Wiki-based retrieval (see §8). All st
 ### 5.2 Every subsequent mount
 ```
 launchd sees mount event (StartOnMount=true)
-  └─ executes stub in plist that resolves the real mount path
-        (handles /Volumes/myhub vs /Volumes/myhub 1 via UUID lookup)
-      └─ runs /Volumes/myhub/.boot/on-mount.sh
-            ├─ verifies manifest.json hashes (tamper-check)
-            ├─ plays connect.aiff via afplay
-            ├─ shows notification "myhub connected" via osascript
-            ├─ runs preflight.sh (binaries OK? config readable? memory dir present?)
-            └─ opens Terminal.app via AppleScript:
-                  cd /Volumes/myhub && ./.boot/launcher.sh
+  └─ runs host-side wrapper (~/.myhub-mount-wrapper.sh, generated by install.command;
+        needed because launchd itself is denied TCC access to external volumes)
+        └─ opens Terminal.app via AppleScript, running on-mount.sh in that window
+              ├─ verifies manifest.json hashes (tamper-check)
+              ├─ plays connect.aiff via afplay
+              ├─ shows notification "myhub connected" via osascript
+              ├─ runs preflight.sh (binaries OK? config readable? memory dir present?)
+              └─ `exec launcher.sh` — stays in the SAME Terminal window; no second
+                    osascript, no second window. launcher.sh then runs the TUI.
 ```
 
 ### 5.3 The launcher
@@ -227,9 +272,18 @@ export CLAUDE_CODE_PLUGIN_CACHE_DIR="$MYHUB/.claude/plugins"
 export MYHUB_ROOT="$MYHUB"
 export PATH="$MYHUB/bin:$PATH"
 
-# hand off to the TUI — which will exec Claude Code later on-demand
+# Re-spawn loop: the TUI uses syscall.Exec to hand off to child tools
+# (claude, lazygit) so they inherit the TTY without a chrome-flash.
+# Before each exec the TUI writes .boot/.respawn; when the child exits
+# we see the marker and restart the TUI. No marker = the user quit.
+MARKER="$MYHUB/.boot/.respawn"
 cd "$MYHUB"
-exec "$MYHUB/bin/myhub-tui"
+while true; do
+    rm -f "$MARKER"
+    "$MYHUB/bin/myhub-tui" "$@" || true
+    [[ -f "$MARKER" ]] || break
+done
+rm -f "$MARKER"
 ```
 
 **Latency target:** mount → TUI visible and greeting rendered ≤ 2 seconds. Claude Code session ready ≤ 1 second after the user selects a project (most of the ~1s is Claude Code's own startup).
@@ -293,13 +347,19 @@ True isolation. You take out the drive, walk to any Mac, plug in, and the same p
 
 The TUI is the user's front door. It's what mount produces; Claude Code is what it *dispatches* to.
 
-### 7.1 Stack
+### 7.1 Stack (v3)
 
-- **Language:** Go (static binary, no runtime deps on the SSD).
-- **Framework:** Bubble Tea v2 (Elm-style MVU) — https://github.com/charmbracelet/bubbletea
-- **Components:** Bubbles (list, textinput, viewport, spinner) — https://github.com/charmbracelet/bubbles
-- **Styling:** Lipgloss v2 (compositor for layered panes) — https://github.com/charmbracelet/lipgloss
-- **Binary target:** `arm64` static Mach-O, `~10–12 MB`, built with `CGO_ENABLED=0 GOOS=darwin GOARCH=arm64 go build`.
+- **Language:** Python 3.13 — relocatable interpreter from [python-build-standalone](https://github.com/astral-sh/python-build-standalone) at `runtime/python/` (no host Python required).
+- **TUI layer:** [`prompt_toolkit`](https://python-prompt-toolkit.readthedocs.io/) for the input loop, history, and HTML-style prompts.
+- **Render layer:** [`rich`](https://rich.readthedocs.io/) for panels, tables, spinners, progress bars, and 24-bit color gradients.
+- **Registry pattern:** ported from OpenAra — `CommandSpec` + natural-language `resolve()` (exact → multi-word alias → unique prefix → fuzzy). 14 commands in 5 categories.
+- **Wizard pattern:** also OpenAra-inherited — handlers return `CommandResult(prompt=..., pending_handler=...)`, the main loop routes the next line of input to that handler instead of the registry. Supports multi-step create/delete flows.
+- **Dependencies:** `prompt-toolkit`, `rich`, `psutil`, `PyYAML` — ~4 runtime deps, installed into `runtime/python/.../site-packages` by `bin/uv pip install`.
+- **Maintenance CLI:** separate project at `myhub-cli/` (Go, `bin/myhub` binary, commands: `verify`, `compile`, `stats`, `trust`, `manifest`, `health`) — shelled out from the Python TUI where it makes sense.
+- **Launch model:** `os.execvp` + `.boot/.respawn` sentinel file read by `launcher.sh`'s re-spawn loop. The Python process *becomes* Claude/lazygit and the TUI re-launches after the child exits.
+
+### 7.1a Archived: v2 Go stack
+v2 used Bubble Tea v2 + Lipgloss v2 + Bubbles (Charm) and `tea.ExecProcess` for launches. The `myhub-tui/` Go source was archived when the Python port landed in v3. Any reference to Bubble Tea / Lipgloss / `tea.ExecProcess` in later sections of this spec is historical.
 
 ### 7.2 Layout
 
@@ -526,9 +586,9 @@ Mirrors the Claude Code memory pattern. `MEMORY.md` is the always-loaded index; 
 
 ---
 
-## 10. Proactive On-Mount Behavior — the Jarvis Moment, TUI-Edition
+## 10. Proactive On-Mount Behavior
 
-v2 flow: **hybrid** (immediate simple greeting + async briefer panel + TTS when brief is ready).
+v2 flow: **hybrid** (immediate simple greeting + async briefer panel).
 
 ```
   SSD plugged in
@@ -537,15 +597,16 @@ v2 flow: **hybrid** (immediate simple greeting + async briefer panel + TTS when 
   launchd fires com.myhub.mount.plist (StartOnMount=true)
         │
         ▼
-  on-mount.sh runs from /Volumes/myhub/.boot/
+  host wrapper (~/.myhub-mount-wrapper.sh) opens Terminal.app via osascript,
+  running on-mount.sh in that window
         │
         ├─→ afplay .boot/assets/connect.aiff              (boot sound)
         ├─→ osascript display notification "myhub connected"
         ├─→ preflight.sh (binary + config sanity check)
-        └─→ osascript opens Terminal.app, cd, runs launcher.sh
+        └─→ exec launcher.sh  (SAME window, no second osascript)
                 │
                 ▼
-          launcher.sh exports env, execs myhub-tui
+          launcher.sh exports env, runs myhub-tui in a re-spawn loop
                 │
                 ▼
           TUI renders IMMEDIATELY (≤ 200 ms):
@@ -561,10 +622,9 @@ v2 flow: **hybrid** (immediate simple greeting + async briefer panel + TTS when 
                 ▼
           Briefer returns after 2–4 s:
             · TUI redraws "today" panel with brief text
-            · `say -v Daniel "$brief" &` runs async (skipped if MYHUB_TTS=0)
                 │
                 ▼
-          User sees/hears proactive briefing, picks a project → Claude
+          User sees the proactive briefing, picks a project → Claude
 ```
 
 ### 10.1 The greeting (no blank panel, ever)
@@ -583,21 +643,10 @@ Freitag hattest Du SPEC v2 geschrieben.
 Offener Faden: Reformatierung T7 auf APFS.
 ```
 
-TTS reads the full brief when ready. The *user is already interacting* with the project list by that point — TTS is audio context, not a blocker.
+The *user is already interacting* with the project list by the time the brief arrives — the briefing is context, not a blocker.
 
-### 10.2 Voice control
-- **Default voice: `Daniel`** (British male, ships with macOS).
-- Configurable in `memory/config.toml` → `tts.voice`. Any `say -v '?'` voice works.
-- Upgrade paths (documented in `docs/voice.md`, Phase 2+):
-  - Premium neural voices (download via Systemeinstellungen > Barrierefreiheit > Gesprochene Inhalte).
-  - Piper TTS (local, offline, cinematic — recommended v2 upgrade, bundled on SSD).
-  - ElevenLabs (cloud, paid, true Jarvis-level).
-- Kill-switch: `MYHUB_TTS=0` env var or `tts.enabled=false` in config.
-- TTS runs async; TUI never waits on it.
-
-### 10.3 Reliability safeguards
+### 10.2 Reliability safeguards
 - If `briefer` errors → static fallback ("N raw files changed since last mount; Projekt X berührt") computed in Go from filesystem scan. TUI never shows an error panel to the user.
-- If `say` missing → silent fallback, no crash.
 - If `memory/MEMORY.md` missing → first-time user flow, TUI shows onboarding modal via Interview primitive.
 - If `claude` binary missing → TUI shows a big fix-command panel and a retry button.
 
@@ -606,7 +655,7 @@ TTS reads the full brief when ready. The *user is already interacting* with the 
 ## 11. Slash Commands, Agents, Hooks
 
 ### 11.1 Ship-with slash commands (4)
-- **`/setup`** — one-time onboarding. Interview-primitive wizard: name, preferred language, TTS on/off, default editor. Writes to `content/CLAUDE.md` + `memory/config.toml`. < 60 seconds.
+- **`/setup`** — one-time onboarding. Interview-primitive wizard: name, preferred language, default editor. Writes to `content/CLAUDE.md` + `memory/config.toml`. < 60 seconds.
 - **`/brief`** — regenerate the proactive briefing mid-session (invokes briefer headlessly, prints to Claude's stdout).
 - **`/reflect`** — distills just-ended session into 0–3 new memory entries.
 - **`/compile`** — force a wiki compile pass (`/compile --since=2d` for incremental, `/compile --full` for rebuild).
@@ -738,7 +787,7 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
    OR: curl -fsSL https://raw.githubusercontent.com/koljaschoepe/myhub/main/bootstrap.sh | bash
 3. Double-click /Volumes/myhub/.boot/install.command (one-time per Mac)
 4. Drop the SSD (cmd+E) → plug back in → sound plays, TUI greets you
-5. Hub shows onboarding Interview overlay → name, language, TTS (30s)
+5. Hub shows onboarding Interview overlay → name, language, editor (30s)
 6. Drop some files into content/notes/, content/projects/
 7. /compile → wiki materializes
 ```
@@ -780,12 +829,11 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
 - **Auth-on-SSD empirically verified** — CLAUDE_CONFIG_DIR bypasses Keychain ✓
 - *(Phase 4)* Bundled Claude Code binary (currently dev falls back to $PATH)
 
-### Phase 2 — Interview + Setup + Voice ✓ DONE
+### Phase 2 — Interview + Setup ✓ DONE
 - `internal/interview/` primitive (§12) — Bubble Tea overlay component ✓
 - `/setup` slash command + matching first-run TUI wizard via Interview primitive ✓
-- TTS integration: `say -v Daniel` on brief (async, kill-switch via MYHUB_TTS=0) ✓
 - `briefer` agent v1: headless `claude -p --agent briefer` called by TUI on mount ✓
-- `internal/config/` for memory/config.toml (name, language, TTS, editor) ✓
+- `internal/config/` for memory/config.toml (name, language, editor) ✓
 - `memory/MEMORY.md` + typed memory files scaffold ✓
 - `/reflect` slash command (defined) ✓
 - `session-end.sh` hook ✓
@@ -812,28 +860,27 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
 - `manifest.json` + SHA-256 verification (`myhub manifest` + `myhub verify`; install.command + on-mount.sh both verify) ✓
 - GitHub Actions pipeline: `.github/workflows/ci.yml` on push+PR (vet, test-race, build + artifacts); `.github/workflows/release.yml` on `v*.*.*` tags (build + stage + tar + sha256 + gh release with release notes) ✓
 - Gatekeeper: `xattr -dr com.apple.quarantine` documented prominently in README + release notes ✓
-- `--safe-mode` flag (read-only, no TTS, no writes, no onboarding, no auto-compile; yellow banner in UI) ✓
-- Docs: `docs/voice.md` (voice upgrade paths — Premium neural / Piper / ElevenLabs), `docs/authoring.md` (CLAUDE.md conventions) ✓
+- `--safe-mode` flag (read-only, no writes, no onboarding, no auto-compile; yellow banner in UI) ✓
+- Docs: `docs/authoring.md` (CLAUDE.md conventions) ✓
 - *(Deferred)* Notarization (Developer ID) — $99/yr Apple account required. Roadmap item for when the project has a stable release cadence.
 
 ### Phase 5 — Scale (optional, only if needed)
 - Opt-in `age`-encrypted subfolders for sensitive content.
 - Tantivy BM25 index as additional MCP tool (zero ML cost, instant lexical search).
 - LanceDB + Nomic Embed semantic layer (Ollama bundled) — *only* if wiki scale demands it.
-- Piper TTS bundle for local cinematic voice.
 - CLIP embeddings for photos, whisper.cpp transcripts for audio.
 - Intel x64 binaries if demand materializes.
 - tmux-pane mode for parallel Claude sessions.
 
 ---
 
-## 17. Decisions Resolved (v2 of spec)
+## 17. Decisions Resolved
 
 | # | Decision | Resolution |
 |---|---|---|
 | A | Project name | **`myhub`** ✓ |
 | B | SSD volume label | **`myhub`** (after reformatting T7 from ExFAT → APFS) ✓ |
-| C | Sound on mount | Starter sound TBD; `say -v Daniel` voice greeting is the real centerpiece ✓ |
+| C | Sound on mount | Starter sound plays on connect; the on-mount briefing panel is the real centerpiece ✓ |
 | D | Terminal app | **`Terminal.app`** (universal) ✓ |
 | E | Encryption scope | **Unencrypted SSD** for MVP (user choice) ✓ |
 | F | Architecture | **arm64-only** for MVP ✓ |
@@ -842,19 +889,13 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
 | I | Auth | **OAuth token on SSD** via `CLAUDE_CONFIG_DIR` ✓ |
 | **J** | **Mount-flow entrypoint** | **TUI hub, not Claude directly** (v2 pivot) ✓ |
 | **K** | **Scope of managed projects** | **SSD-resident only** (`content/projects/*/`) ✓ |
-| **L** | **TUI stack** | **Bubble Tea v2 (Go) + Lipgloss v2 + Bubbles** ✓ |
-| **M** | **Claude launch model** | **`tea.ExecProcess` with return-to-hub** ✓ |
-| **N** | **Briefer UX** | **Hybrid: immediate simple greeting + async briefer panel + TTS on ready** ✓ |
-| **O** | **Interview primitive** | **First-class, shared TUI/agent/CLI contract (§12)** ✓ |
+| **L** | **TUI stack** | **v3: Python 3.13 + prompt_toolkit + rich** (port from OpenAra). *v2: Bubble Tea Go — archived* ✓ |
+| **M** | **Claude launch model** | **v3: `os.execvp` + `.boot/.respawn` sentinel + launcher.sh re-spawn loop**. *v2: tea.ExecProcess — archived* ✓ |
+| **N** | **Briefer UX** | **Hybrid: immediate simple greeting + async briefer panel** ✓ |
+| **O** | **Interview primitive** | **v3: OpenAra's pending-handler wizard pattern (multi-step via CommandResult)**. *v2: Bubble Tea overlay — archived* ✓ |
 | **P** | **Visual identity** | **Inherit OpenAra palette + glyphs** ✓ |
-
-### Remaining micro-decisions before Phase 0 continues
-| # | Question | Recommended default |
-|---|---|---|
-| 1 | Reformat T7 (ExFAT → APFS) now? | **Yes.** ExFAT breaks symlinks, unix perms, git. |
-| 2 | Boot sound file | Ship Apple's `Glass.aiff` as placeholder; pick real one in Phase 2. |
-| 3 | TTS voice for MVP | **`Daniel`** with upgrade docs pointing to Piper/ElevenLabs. |
-| 4 | `myhub-tui` Go module path | `github.com/koljaschoepe/myhub/myhub-tui`. |
+| **Q** | **Python distribution** | **python-build-standalone (Astral), relocatable, bootstrapped to `runtime/python/` by `tooling/install-python.sh`**. uv for dep management. ✓ |
+| **R** | **Fork vs. port of OpenAra** | **Port** — only the relevant ~30 % (UX architecture, visual identity, project registry, wizard pattern). Linux-server pieces (Jetson/RPi, fail2ban, n8n Docker, Tailscale, playwright, setup scripts) are out of scope. ✓ |
 
 ---
 
@@ -865,13 +906,13 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
 | macOS Gatekeeper blocks unsigned binaries (claude + myhub-tui) on new Macs | High | Medium | README instructs `xattr -dr /Volumes/myhub`; Phase 4 notarize |
 | Mount path collision (`/Volumes/myhub 1`) | Medium | Low | UUID-based path discovery in launcher |
 | Wiki corruption / stale | Low | Low | Raw `content/` is ground truth; `/compile --full` always restores |
-| TTS voice not installed on a new Mac | Medium | Low | Fallback to default system voice; voice download suggestion |
 | User plugs into corp Mac by mistake | Low | High | Phase 4 safe-mode + host UUID allowlist |
 | API costs from OAuth subscription limits | Medium | Low | User on Pro/Max; rate limits are Anthropic's, not ours |
 | Lost SSD → OAuth token leak | Low-Medium | Medium | Subscription-scoped; immediate revoke via claude.ai; opt-in encryption in v1.1 |
 | Spec drift between personal use and public repo | Medium | Medium | Single codebase; `content/` + `memory/` + `.credentials.json` in `.gitignore` |
 | Compiler agent rewrites wiki poorly | Medium | Medium | All diffs reviewable in git; `/compile --dry-run`; raw files untouched |
-| `tea.ExecProcess` TTY conflict with Claude's own alt-screen | Low | Medium | Bubble Tea exits alt-screen before handoff; tested on Claude Code 2.1.117 |
+| `os.execvp` fails (missing claude binary, non-POSIX host) | Low | Medium | `ai.py` writes the respawn marker only just before exec; on failure the marker is removed so `launcher.sh` does not respawn over a broken binary. Claude binary is checked up-front in `_resolve_claude()`. |
+| Python runtime missing on fresh SSD mount | Low | High | `launcher.sh` detects `runtime/python/` absence and falls back to launching `bin/claude` directly; README + install.command instruct running `tooling/install-python.sh` + `install-uv.sh` once per SSD. |
 | Briefer subprocess hangs / slow | Medium | Low | 10s hard timeout in Go; static fallback panel |
 | Project registry YAML corrupts | Low | Low | Atomic write + backup-on-parse-error + filesystem rescan |
 
@@ -889,4 +930,4 @@ Repo: [github.com/koljaschoepe/myhub](https://github.com/koljaschoepe/myhub) —
 
 ---
 
-*End of spec v2. Next step: Phase 0 — format T7 to APFS, scaffold SSD directory structure, scaffold `myhub-tui` Go project.*
+*End of spec v3. The architecture is live: SSD is formatted APFS, launchd hook is installed, the Python TUI at `myhub-tui/` dispatches via the OpenAra-ported registry to `bin/claude` (exec-replace), the maintenance CLI at `myhub-cli/` owns manifest/verify/compile, and `tooling/install-*.sh` bootstraps Python + uv without touching the host. See `myhub-tui/README.md` for the TUI details, `myhub-cli/cmd/myhub/main.go` for the CLI, `tests/` for the suite.*

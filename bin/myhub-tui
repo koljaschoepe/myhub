@@ -1,0 +1,36 @@
+#!/bin/bash
+# myhub-tui — the Python TUI launcher. Invoked by .boot/launcher.sh
+# inside its re-spawn loop. Sets up a SSD-portable Python environment
+# (no host Python needed) and execs the `myhub_tui` package.
+set -euo pipefail
+
+HERE="$(cd "$(dirname "$0")" && pwd)"
+ROOT="$(dirname "$HERE")"
+
+PYTHON_HOME="$ROOT/runtime/python"
+TUI_PACKAGE_ROOT="$ROOT/myhub-tui"
+
+if [[ ! -x "$PYTHON_HOME/bin/python3" ]]; then
+    cat >&2 <<EOF
+myhub-tui: Python runtime not found at $PYTHON_HOME
+
+Bootstrap it once with:
+  bash "$ROOT/tooling/install-python.sh"
+EOF
+    exit 1
+fi
+
+if [[ ! -d "$TUI_PACKAGE_ROOT/myhub_tui" ]]; then
+    cat >&2 <<EOF
+myhub-tui: TUI package not found at $TUI_PACKAGE_ROOT/myhub_tui
+EOF
+    exit 1
+fi
+
+export MYHUB_ROOT="$ROOT"
+export PYTHONHOME="$PYTHON_HOME"
+export PYTHONPATH="${TUI_PACKAGE_ROOT}${PYTHONPATH:+:$PYTHONPATH}"
+
+# site.py is needed so 3rd-party deps (rich, prompt_toolkit, ...)
+# installed into the runtime's site-packages are discoverable.
+exec "$PYTHON_HOME/bin/python3" -m myhub_tui.app "$@"

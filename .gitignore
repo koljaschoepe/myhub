@@ -37,26 +37,46 @@ memory/**
 # --- Runtime binaries (shipped via GitHub Releases, not source) ---
 bin/claude
 bin/claude-*
-bin/myhub-tui
 bin/myhub
 bin/ollama
 bin/rg
 bin/fswatch
+# bin/myhub-tui is the Python launcher bash script — committed, not release-shipped.
 
-# --- Build toolchains (shipped via Releases + install-go.sh bootstrap) ---
+# --- Build toolchains (shipped via Releases + install-*.sh bootstraps) ---
 tooling/go
 tooling/go-*
+tooling/cache/
 tooling/*.tar.gz
 !tooling/README.md
 !tooling/install-go.sh
+!tooling/install-python.sh
+!tooling/install-uv.sh
+
+# --- SSD-portable Python runtime (bootstrapped by install-python.sh) ---
+runtime/
+
+# --- uv binary (bootstrapped by install-uv.sh) ---
+bin/uv
+bin/uvx
 
 # --- Boot-time state (host-specific, generated at install) ---
 .boot/trusted-hosts.json
 .boot/dashboard-state.json
+.boot/.respawn
+.boot/repl-state.json
+
+# --- Python build/test artifacts ---
+**/__pycache__/
+**/*.pyc
+**/*.egg-info/
+.pytest_cache/
+.ruff_cache/
+.mypy_cache/
 
 # --- Go build artifacts ---
-myhub-tui/bin/
-myhub-tui/dist/
+myhub-cli/bin/
+myhub-cli/dist/
 *.test
 *.out
 coverage.out
@@ -78,3 +98,7 @@ coverage.out
 
 # --- Logs ---
 *.log
+
+.claude/backups/
+.claude/telemetry/
+.claude/.claude.json

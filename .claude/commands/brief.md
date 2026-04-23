@@ -9,5 +9,3 @@ If invoked from inside a Claude session (not the TUI), after printing the brief,
 - Fortsetzen mit einem der offenen Fäden
 - Zu einem anderen Projekt wechseln (returns to TUI)
 - Zurück zur aktuellen Aufgabe *(Recommended)*
-
-Never block on TTS — if the user is inside a session, skip audio.

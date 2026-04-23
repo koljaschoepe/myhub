@@ -33,7 +33,9 @@ check ".claude/ config dir readable"   test -r "$MYHUB/.claude"
 check "content/ dir exists"            test -d "$MYHUB/content"
 check "memory/ dir exists"             test -d "$MYHUB/memory"
 
-warn  "TUI binary present"             test -x "$MYHUB/bin/myhub-tui"
+warn  "TUI launcher present"           test -x "$MYHUB/bin/myhub-tui"
+warn  "Python runtime present"         test -x "$MYHUB/runtime/python/bin/python3"
+warn  "TUI package importable"         test -f "$MYHUB/myhub-tui/myhub_tui/app.py"
 warn  "content/CLAUDE.md root map"     test -f "$MYHUB/content/CLAUDE.md"
 warn  "memory/MEMORY.md index"         test -f "$MYHUB/memory/MEMORY.md"
 

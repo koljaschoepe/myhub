@@ -1,6 +1,6 @@
 #!/bin/bash
 # Claude Code SessionStart hook.
-# Slimmed in v2: greeting/TTS moved to the TUI. Only job here is to surface
+# Slimmed in v2: greeting moved to the TUI. Only job here is to surface
 # project-local memory when MYHUB_PROJECT is set by the TUI's launcher.
 set -euo pipefail
 

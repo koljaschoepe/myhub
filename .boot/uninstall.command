@@ -17,5 +17,6 @@ read -r -p "Continue? [y/N] " confirm
 
 launchctl bootout "gui/$(id -u)/com.myhub.mount" 2>/dev/null || true
 rm -f "$PLIST_DST"
+rm -f "$HOME/.myhub-mount-wrapper.sh"
 
 echo "✓ myhub LaunchAgent removed. You may unplug the SSD safely."
