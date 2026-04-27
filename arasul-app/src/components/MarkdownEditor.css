@@ -1,0 +1,630 @@
+/* TipTap WYSIWYG markdown editor — Cursor/Notion-flavored.
+   Always-rendered: no raw markdown ever shows; user types directly into
+   the formatted view. Generous reading column, plenty of whitespace. */
+
+.arasul-md-editor {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  overflow-y: auto;
+  background: var(--bg-canvas);
+  padding: 0 0 var(--editor-pad-y-bottom);
+}
+.arasul-md-editor.compact {
+  padding-top: var(--editor-pad-y);
+}
+
+.arasul-md-canvas {
+  width: 100%;
+  flex: 1;
+  padding-top: var(--editor-pad-y);
+}
+.arasul-md-editor.compact .arasul-md-canvas { padding-top: 0; }
+
+.arasul-md-canvas .tiptap {
+  max-width: var(--measure);
+  margin: 0 auto;
+  padding: 0 var(--sp-6);
+  font-family: var(--font-sans);
+  font-size: var(--fs-editor-body);
+  line-height: 1.7;
+  color: var(--text-primary);
+  outline: none;
+}
+
+/* Suppress the global :focus-visible ring (theme.css) on every editor
+   surface. iA Writer / Bear / Obsidian convention: caret + selection are
+   the focus signal — no chrome border on the writing area.
+   Covers WYSIWYG (.tiptap / .ProseMirror), source-mode CodeMirror
+   (.cm-editor / .cm-content including its own cm-focused outline), and
+   the outer scroll container. */
+.arasul-md-editor:focus,
+.arasul-md-editor:focus-visible,
+.arasul-md-canvas,
+.arasul-md-canvas:focus,
+.arasul-md-canvas:focus-visible,
+.arasul-md-canvas .tiptap,
+.arasul-md-canvas .tiptap:focus,
+.arasul-md-canvas .tiptap:focus-visible,
+.arasul-md-canvas .ProseMirror,
+.arasul-md-canvas .ProseMirror:focus,
+.arasul-md-canvas .ProseMirror:focus-visible,
+.arasul-md-source .cm-editor,
+.arasul-md-source .cm-editor.cm-focused,
+.arasul-md-source .cm-editor:focus,
+.arasul-md-source .cm-editor:focus-visible,
+.arasul-md-source .cm-content,
+.arasul-md-source .cm-content:focus,
+.arasul-md-source .cm-content:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+.arasul-md-canvas .tiptap > * + * { margin-top: 0.85em; }
+
+/* Headings — clear visual hierarchy. */
+.arasul-md-canvas h1 {
+  font-size: var(--fs-h1);
+  font-weight: var(--fw-semibold);
+  letter-spacing: -0.02em;
+  line-height: 1.2;
+  margin: 0 0 0.4em;
+}
+.arasul-md-canvas h2 {
+  font-size: var(--fs-h2);
+  font-weight: var(--fw-medium);
+  letter-spacing: -0.01em;
+  line-height: 1.25;
+  margin: 1.2em 0 0.3em;
+}
+.arasul-md-canvas h3 {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-medium);
+  margin: 1em 0 0.25em;
+}
+.arasul-md-canvas h4 {
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-medium);
+  margin: 0.9em 0 0.2em;
+  color: var(--text-secondary);
+}
+.arasul-md-canvas h5 {
+  font-size: var(--fs-h5);
+  font-weight: var(--fw-medium);
+  margin: 0.8em 0 0.2em;
+  color: var(--text-secondary);
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}
+.arasul-md-canvas h6 {
+  font-size: var(--fs-h6);
+  font-weight: var(--fw-medium);
+  margin: 0.7em 0 0.2em;
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+
+/* Underline mark — Phase C. */
+.arasul-md-canvas u { text-decoration: underline; text-underline-offset: 2px; }
+
+.arasul-md-canvas p { margin: 0; }
+.arasul-md-canvas p:empty::before { content: ""; display: inline-block; height: 1em; }
+
+.arasul-md-canvas strong { font-weight: var(--fw-semibold); }
+.arasul-md-canvas em { font-style: italic; }
+.arasul-md-canvas s { color: var(--text-tertiary); }
+
+.arasul-md-canvas blockquote {
+  margin: 0;
+  padding: 4px 0 4px 16px;
+  border-left: 3px solid var(--border-strong);
+  color: var(--text-secondary);
+  font-style: italic;
+}
+
+.arasul-md-canvas hr {
+  border: none;
+  border-top: 1px solid var(--border-subtle);
+  margin: 1.4em 0;
+}
+
+.arasul-md-canvas a {
+  color: var(--accent);
+  text-decoration: none;
+  border-bottom: 1px dotted color-mix(in srgb, var(--accent) 50%, transparent);
+}
+.arasul-md-canvas a:hover { border-bottom-style: solid; }
+
+/* Inline code. */
+.arasul-md-canvas :not(pre) > code {
+  font-family: var(--font-mono);
+  font-size: 0.88em;
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--accent);
+}
+
+/* Code blocks (lowlight syntax highlighting). Phase 5 polish: tighter
+   border-radius matches the monospace feel; +2px padding + 0.1 line-height
+   give code rooms to breathe like Cursor's blocks. */
+.arasul-md-canvas pre {
+  position: relative;
+  margin: var(--sp-3) 0;
+  padding: var(--sp-4) var(--sp-5);
+  border-radius: var(--radius-sm);
+  background: var(--code-block-bg);
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-editor-code);
+  line-height: 1.65;
+  overflow-x: auto;
+}
+.arasul-md-canvas pre code {
+  background: transparent;
+  color: inherit;
+  padding: 0;
+  font-size: inherit;
+}
+
+/* Hover-only Copy button on code blocks. The button lives outside the
+   ProseMirror schema (CSS-only), so it doesn't fight TipTap's selection.
+   Wired by the JS hover handler in MarkdownEditor.tsx. */
+.arasul-md-canvas pre .arasul-md-copy {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-family: var(--font-sans);
+  font-size: var(--fs-xs);
+  opacity: 0;
+  transform: translateY(-2px);
+  transition: opacity var(--motion-fast), transform var(--motion-fast), color var(--motion-fast);
+  cursor: pointer;
+}
+.arasul-md-canvas pre:hover .arasul-md-copy { opacity: 1; transform: translateY(0); }
+.arasul-md-canvas pre .arasul-md-copy:hover { color: var(--text-primary); }
+.arasul-md-canvas pre .arasul-md-copy.copied {
+  color: var(--success);
+  opacity: 1;
+}
+
+/* Lists. */
+.arasul-md-canvas ul,
+.arasul-md-canvas ol {
+  padding-left: 1.5em;
+  margin: 0;
+}
+.arasul-md-canvas li > p { margin: 0; }
+.arasul-md-canvas li + li { margin-top: 0.25em; }
+
+/* Task list (checkbox-style). */
+.arasul-md-canvas ul[data-type="taskList"] {
+  list-style: none;
+  padding-left: 0;
+}
+.arasul-md-canvas ul[data-type="taskList"] li {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+}
+.arasul-md-canvas ul[data-type="taskList"] li > label {
+  flex: 0 0 auto;
+  margin-top: 4px;
+  user-select: none;
+}
+.arasul-md-canvas ul[data-type="taskList"] li > div { flex: 1; }
+.arasul-md-canvas ul[data-type="taskList"] input[type="checkbox"] {
+  width: 14px;
+  height: 14px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Tables. */
+.arasul-md-canvas table {
+  border-collapse: collapse;
+  table-layout: fixed;
+  width: 100%;
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--radius-sm);
+}
+.arasul-md-canvas table td,
+.arasul-md-canvas table th {
+  border: 1px solid var(--border-subtle);
+  padding: 6px 10px;
+  vertical-align: top;
+  position: relative;
+}
+.arasul-md-canvas table th {
+  background: var(--bg-elevated);
+  font-weight: var(--fw-semibold);
+  text-align: left;
+}
+.arasul-md-canvas .selectedCell::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background: var(--accent-soft);
+  pointer-events: none;
+}
+/* Resize handles for tables. */
+.arasul-md-canvas .column-resize-handle {
+  position: absolute;
+  right: -2px;
+  top: 0;
+  bottom: -2px;
+  width: 4px;
+  background: var(--accent);
+  pointer-events: none;
+}
+
+.arasul-md-canvas img {
+  max-width: 100%;
+  height: auto;
+  border-radius: var(--radius);
+  display: block;
+}
+
+/* Placeholder (only on the very first empty line). */
+.arasul-md-canvas .is-editor-empty:first-child::before {
+  content: attr(data-placeholder);
+  float: left;
+  color: var(--text-tertiary);
+  pointer-events: none;
+  height: 0;
+}
+
+/* Tiny status dot top-right. */
+.arasul-md-statusdot {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: background var(--motion-fast), opacity var(--motion-fast);
+}
+.arasul-md-statusdot-clean   { background: transparent; opacity: 0; }
+.arasul-md-statusdot-saving  { background: var(--text-tertiary); opacity: 0.8; }
+.arasul-md-statusdot-saved   { background: var(--success); opacity: 0.7; }
+.arasul-md-statusdot-dirty   { background: var(--accent); opacity: 0.9; }
+.arasul-md-statusdot-error   { background: var(--danger); opacity: 0.9; }
+
+/* Lowlight token colors — routed through theme tokens. */
+.arasul-md-canvas .hljs-comment,
+.arasul-md-canvas .hljs-quote        { color: var(--hljs-comment); font-style: italic; }
+.arasul-md-canvas .hljs-keyword,
+.arasul-md-canvas .hljs-selector-tag { color: var(--hljs-keyword); }
+.arasul-md-canvas .hljs-string,
+.arasul-md-canvas .hljs-attr         { color: var(--hljs-string); }
+.arasul-md-canvas .hljs-number,
+.arasul-md-canvas .hljs-literal      { color: var(--hljs-number); }
+.arasul-md-canvas .hljs-title,
+.arasul-md-canvas .hljs-name         { color: var(--hljs-fn); }
+.arasul-md-canvas .hljs-built_in,
+.arasul-md-canvas .hljs-type         { color: var(--hljs-builtin); }
+.arasul-md-canvas .hljs-tag,
+.arasul-md-canvas .hljs-meta         { color: var(--hljs-tag); }
+
+
+/* ============================================================
+   Top toolbar (Phase C)
+   Sticky, full-width, unobtrusive. Holds groups of icon buttons
+   separated by thin verticals. Heading picker is a small dropdown.
+   ============================================================ */
+
+.arasul-md-toolbar {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--toolbar-h);
+  padding: 0 var(--sp-3);
+  background: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-subtle);
+  user-select: none;
+}
+
+.arasul-md-toolbar-group {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.arasul-md-toolbar-sep {
+  display: inline-block;
+  width: 1px;
+  height: 16px;
+  margin: 0 var(--sp-2);
+  background: var(--border-subtle);
+}
+
+.arasul-md-toolbar-spacer { flex: 1; }
+
+.arasul-md-toolbar-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-1);
+  width: var(--toolbar-btn);
+  height: var(--toolbar-btn);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-md-toolbar-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+.arasul-md-toolbar-btn.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.arasul-md-toolbar-btn:disabled {
+  opacity: 0.35;
+  cursor: not-allowed;
+}
+
+/* Heading picker (dropdown). */
+.arasul-md-heading-picker { position: relative; }
+.arasul-md-heading-trigger {
+  width: auto;
+  padding: 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+}
+.arasul-md-heading-menu {
+  position: absolute;
+  top: calc(100% + 4px);
+  left: 0;
+  min-width: 200px;
+  padding: var(--sp-1);
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  z-index: 10;
+  animation: ctxmenu-in var(--dur-fast) var(--ease-out);
+}
+.arasul-md-heading-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  text-align: left;
+  transition: background var(--motion-fast);
+}
+.arasul-md-heading-item:hover { background: var(--hover); }
+.arasul-md-heading-item.active { background: var(--accent-soft); color: var(--accent); }
+.arasul-md-heading-label { font-weight: var(--fw-medium); }
+.arasul-md-heading-sample {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
+.arasul-md-heading-sample[data-level="1"] { font-size: var(--fs-h3); font-weight: var(--fw-semibold); color: var(--text-secondary); }
+.arasul-md-heading-sample[data-level="2"] { font-size: var(--fs-h4); font-weight: var(--fw-medium); }
+.arasul-md-heading-sample[data-level="3"] { font-size: var(--fs-md); }
+
+
+/* ============================================================
+   Bubble menu (selection-only)
+   ============================================================ */
+
+.arasul-md-bubble {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.4);
+  animation: drop-in var(--dur-fast) var(--ease-out);
+}
+.arasul-md-bubble-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-md-bubble-btn:hover { background: var(--hover); color: var(--text-primary); }
+.arasul-md-bubble-btn.active { background: var(--accent-soft); color: var(--accent); }
+
+
+/* ============================================================
+   Slash menu (block-level inserts)
+   ============================================================ */
+
+.arasul-md-slash {
+  position: fixed;
+  z-index: 1000;
+  width: 280px;
+  max-height: 320px;
+  overflow: hidden;
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: drop-in var(--dur-fast) var(--ease-out);
+}
+
+.arasul-md-slash-input {
+  position: absolute;
+  width: 0;
+  height: 0;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.arasul-md-slash-list {
+  max-height: 320px;
+  overflow-y: auto;
+  padding: var(--sp-1);
+}
+
+.arasul-md-slash-empty {
+  padding: var(--sp-3);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  text-align: center;
+}
+
+.arasul-md-slash-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+.arasul-md-slash-item.selected { background: var(--accent-soft); color: var(--accent); }
+.arasul-md-slash-icon {
+  display: inline-flex;
+  align-items: center;
+  width: 20px;
+  color: var(--text-secondary);
+}
+.arasul-md-slash-item.selected .arasul-md-slash-icon { color: var(--accent); }
+.arasul-md-slash-label { flex: 1; }
+.arasul-md-slash-hint {
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+}
+
+/* Footer stats: word/char count on the right, last-saved on the left.
+   Sticky to bottom-right of the editor pane, low-emphasis tertiary text. */
+.arasul-md-footstats {
+  position: absolute;
+  bottom: 8px;
+  right: 16px;
+  display: flex;
+  gap: var(--sp-3);
+  pointer-events: none;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.arasul-md-savetime { min-width: 0; }
+.arasul-md-wordcount { white-space: nowrap; }
+
+/* Source-mode wrapper. Replaces the rendered canvas while toggle is on.
+   We want CodeMirror to fill the remaining space below the toolbar. */
+.arasul-md-source {
+  flex: 1;
+  min-height: 0;
+}
+.arasul-md-source .cm-editor { height: 100%; }
+
+/* ============================================================
+   ⌘K Inline-AI prompt (Cursor-style)
+   Floats below the user's selection. Subprocess-backed (claude -p),
+   so no streaming — `pending` shows "thinking…" until reply lands.
+   ============================================================ */
+
+.arasul-md-aibox {
+  position: fixed;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  min-width: 380px;
+  max-width: 560px;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-elevated);
+  border: 1px solid var(--accent);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.45);
+  animation: drop-in var(--dur-fast) var(--ease-out);
+}
+
+.arasul-md-aibox-icon {
+  font-size: 14px;
+  line-height: 1;
+  color: var(--accent);
+}
+
+.arasul-md-aibox-input {
+  flex: 1;
+  min-width: 0;
+  background: transparent;
+  border: 0;
+  outline: none;
+  padding: 0;
+  color: var(--text-primary);
+  font-family: inherit;
+  font-size: var(--fs-md);
+}
+
+.arasul-md-aibox-input::placeholder { color: var(--text-tertiary); }
+.arasul-md-aibox-input:disabled { opacity: 0.6; }
+
+.arasul-md-aibox-hint {
+  flex-shrink: 0;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+/* GitHub-style callouts (Phase F). Decoration-driven — see
+   markdownExtensions/Callouts.ts. The blockquote keeps its semantics,
+   we just paint it differently when the first line is [!TYPE]. */
+.arasul-md-canvas blockquote.arasul-callout {
+  position: relative;
+  margin: 1em 0;
+  padding: var(--sp-3) var(--sp-4) var(--sp-3) calc(var(--sp-4) + 4px);
+  background: var(--bg-elevated);
+  border-left: 4px solid var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  font-style: normal;
+  color: var(--text-primary);
+}
+.arasul-md-canvas blockquote.arasul-callout::before {
+  content: attr(data-callout);
+  display: block;
+  margin-bottom: 4px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+}
+.arasul-md-canvas blockquote.arasul-callout-note      { border-left-color: var(--accent); }
+.arasul-md-canvas blockquote.arasul-callout-note::before      { color: var(--accent); }
+.arasul-md-canvas blockquote.arasul-callout-tip       { border-left-color: var(--success); }
+.arasul-md-canvas blockquote.arasul-callout-tip::before       { color: var(--success); }
+.arasul-md-canvas blockquote.arasul-callout-warning   { border-left-color: var(--warning); }
+.arasul-md-canvas blockquote.arasul-callout-warning::before   { color: var(--warning); }
+.arasul-md-canvas blockquote.arasul-callout-important { border-left-color: var(--accent-strong); }
+.arasul-md-canvas blockquote.arasul-callout-important::before { color: var(--accent-strong); }
+.arasul-md-canvas blockquote.arasul-callout-caution   { border-left-color: var(--danger); }
+.arasul-md-canvas blockquote.arasul-callout-caution::before   { color: var(--danger); }

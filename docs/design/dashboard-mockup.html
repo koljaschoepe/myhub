@@ -1,0 +1,497 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Arasul — Dashboard Mockup (3 directions)</title>
+  <style>
+    /* ============================================================
+       SHARED STRUCTURE
+       ============================================================ */
+    *, *::before, *::after { box-sizing: border-box; }
+    html, body { margin: 0; padding: 0; height: 100%; }
+    body {
+      font-family: var(--font-sans);
+      font-size: 14px;
+      color: var(--text-primary);
+      background: var(--bg-canvas);
+      overflow: hidden;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      transition: background 200ms ease;
+    }
+
+    /* Direction picker — fixed in top-right */
+    .picker {
+      position: fixed; top: 16px; right: 16px;
+      display: flex; gap: 4px;
+      background: rgba(0,0,0,0.6); backdrop-filter: blur(8px);
+      padding: 4px; border-radius: 10px; z-index: 100;
+      border: 1px solid rgba(255,255,255,0.1);
+    }
+    .picker button {
+      font: inherit; font-size: 12px;
+      padding: 6px 12px; border: 0; background: transparent;
+      color: rgba(255,255,255,0.6); cursor: pointer; border-radius: 6px;
+      transition: all 120ms ease;
+    }
+    .picker button:hover { color: #fff; }
+    .picker button.active { background: rgba(255,255,255,0.12); color: #fff; }
+
+    /* ============================================================
+       LAYOUT
+       ============================================================ */
+    .app { display: flex; flex-direction: column; height: 100vh; }
+
+    .topbar {
+      height: 40px; padding: 0 16px;
+      display: flex; align-items: center; gap: 16px;
+      border-bottom: 1px solid var(--border-subtle);
+      background: var(--bg-pane);
+      font-size: 13px; color: var(--text-secondary);
+    }
+    .topbar .brand { font-weight: 600; color: var(--text-primary); }
+    .topbar .briefer { flex: 1; font-style: italic; color: var(--text-tertiary); }
+    .topbar .update-pill {
+      font-size: 11px; padding: 3px 10px; border-radius: 10px;
+      background: var(--accent-soft, var(--accent, #7C8FFC22));
+      color: var(--accent-solid, var(--accent, #7C8FFC));
+    }
+
+    .shell { flex: 1; display: flex; min-height: 0; }
+
+    .pane { background: var(--bg-pane); display: flex; flex-direction: column; min-height: 0; }
+    .pane + .pane { border-left: 1px solid var(--border-subtle); }
+
+    .tree-pane { width: 240px; padding: var(--pane-pad-y) 0; }
+    .editor-pane { flex: 1; min-width: 0; }
+    .right-pane { width: 380px; display: flex; flex-direction: column; }
+
+    /* ============================================================
+       TREE PANE
+       ============================================================ */
+    .section-label {
+      font-size: 11px; letter-spacing: 0.08em; text-transform: uppercase;
+      color: var(--text-tertiary); padding: 8px var(--pane-pad-x) 4px;
+      font-weight: 600;
+    }
+    .tree-row {
+      display: flex; align-items: center; gap: 8px;
+      height: var(--row-h); padding: 0 var(--pane-pad-x);
+      color: var(--text-primary); cursor: pointer;
+      font-size: var(--fs-tree);
+      transition: background 100ms ease;
+    }
+    .tree-row:hover { background: var(--row-hover); }
+    .tree-row.selected {
+      background: var(--row-selected);
+      color: var(--row-selected-fg, var(--text-primary));
+    }
+    .tree-row.selected.left-bar { box-shadow: inset 3px 0 0 var(--accent-solid, var(--accent)); }
+    .tree-row .chev { width: 12px; color: var(--text-tertiary); font-size: 10px; }
+    .tree-row .icon { width: 16px; color: var(--tree-icon-color, var(--text-secondary)); display: inline-flex; justify-content: center; }
+    .tree-row.nested { padding-left: calc(var(--pane-pad-x) + 16px); }
+    .tree-row.nested-2 { padding-left: calc(var(--pane-pad-x) + 32px); }
+    .tree-row .meta {
+      margin-left: auto; font-size: 10px; color: var(--text-tertiary);
+      font-feature-settings: "tnum";
+    }
+
+    /* ============================================================
+       EDITOR PANE
+       ============================================================ */
+    .tab-bar {
+      display: flex; align-items: flex-end;
+      height: var(--tab-h);
+      border-bottom: 1px solid var(--border-subtle);
+      padding: 0 8px;
+      gap: 2px;
+    }
+    .tab {
+      height: 100%; padding: 0 12px;
+      display: flex; align-items: center; gap: 8px;
+      font-size: 13px; color: var(--text-secondary);
+      border-right: 1px solid var(--border-subtle);
+      cursor: pointer;
+    }
+    .tab.active {
+      color: var(--text-primary);
+      background: var(--bg-canvas);
+      border-top: 2px solid var(--accent-editor, var(--accent));
+      border-bottom: 1px solid transparent;
+      margin-bottom: -1px;
+    }
+    .tab .dot {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--success, #62C98A);
+    }
+    .editor-body {
+      flex: 1; padding: 24px 32px;
+      font-family: var(--font-mono);
+      font-size: var(--fs-editor);
+      line-height: 1.6;
+      color: var(--text-primary);
+      overflow: auto;
+      background: var(--bg-canvas);
+    }
+    .editor-body h1 {
+      font-family: var(--font-sans);
+      font-size: var(--fs-h1); margin: 0 0 16px;
+      font-weight: 600;
+    }
+    .editor-body h2 {
+      font-family: var(--font-sans);
+      font-size: var(--fs-h2); margin: 24px 0 8px;
+      font-weight: 500;
+    }
+    .editor-body p { margin: 0 0 12px; color: var(--text-primary); }
+    .editor-body .muted { color: var(--text-secondary); }
+    .editor-body code {
+      background: var(--bg-elevated); padding: 1px 6px; border-radius: 4px;
+      font-size: 0.9em;
+    }
+
+    /* ============================================================
+       RIGHT PANE (chat + terminal)
+       ============================================================ */
+    .chat { flex: 1; display: flex; flex-direction: column; min-height: 0; }
+    .chat-messages { flex: 1; padding: var(--pane-pad-y) var(--pane-pad-x); overflow-y: auto; }
+    .msg { margin-bottom: 16px; }
+    .msg .role {
+      font-size: 10px; letter-spacing: 0.1em; text-transform: uppercase;
+      color: var(--text-tertiary); margin-bottom: 4px; font-weight: 600;
+    }
+    .msg.user .role { color: var(--accent-solid, var(--accent)); }
+    .msg.assistant .role { color: var(--accent-chat, var(--text-secondary)); }
+    .msg .body { font-size: 13px; line-height: 1.5; color: var(--text-primary); }
+    .chat-input {
+      border-top: 1px solid var(--border-subtle);
+      padding: 12px var(--pane-pad-x);
+    }
+    .chat-input textarea {
+      width: 100%; min-height: 36px;
+      background: var(--bg-elevated); border: 1px solid var(--border-subtle);
+      color: var(--text-primary); padding: 8px 10px; border-radius: 6px;
+      font-family: inherit; font-size: 13px; resize: none;
+      outline: none;
+      transition: border-color 120ms ease, box-shadow 120ms ease;
+    }
+    .chat-input textarea:focus {
+      border-color: var(--accent-solid, var(--accent));
+      box-shadow: var(--focus-ring, 0 0 0 2px var(--accent, #7C8FFC) inset);
+    }
+    .chat-input .hint {
+      margin-top: 6px; font-size: 11px; color: var(--text-tertiary);
+    }
+
+    .terminal {
+      height: 180px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--term-bg, var(--bg-canvas));
+      font-family: var(--font-mono); font-size: 12px;
+      padding: var(--term-pad, 10px 12px);
+      color: var(--text-primary);
+      overflow: hidden;
+    }
+    .terminal .line { line-height: 1.5; }
+    .terminal .prompt { color: var(--accent-term, var(--accent)); }
+    .terminal .cursor {
+      display: inline-block; width: 8px; height: 14px;
+      background: var(--accent-term, var(--accent));
+      vertical-align: middle; animation: blink 1s infinite;
+    }
+    @keyframes blink { 50% { opacity: 0; } }
+
+    .statusbar {
+      height: 24px; padding: 0 16px;
+      display: flex; align-items: center; gap: 12px;
+      border-top: 1px solid var(--border-subtle);
+      background: var(--bg-pane);
+      font-size: 11px; color: var(--text-tertiary);
+      font-family: var(--font-mono);
+    }
+    .statusbar .kbd {
+      font-family: var(--font-mono); color: var(--text-secondary);
+    }
+
+    /* ============================================================
+       DIRECTION 1A — LINEAR-CLEAN
+       ============================================================ */
+    body[data-direction="1A"] {
+      --font-sans: "Inter", "Geist", -apple-system, BlinkMacSystemFont, sans-serif;
+      --font-mono: "Geist Mono", "SF Mono", Consolas, monospace;
+
+      --bg-canvas: #0E0F11;
+      --bg-pane: #15171B;
+      --bg-elevated: #1C1F25;
+      --border-subtle: #232730;
+      --border-strong: #303640;
+
+      --text-primary: #E6E8EC;
+      --text-secondary: #9AA0AB;
+      --text-tertiary: #636976;
+
+      --accent: #7C8FFC;
+      --accent-solid: #7C8FFC;
+      --accent-soft: rgba(124, 143, 252, 0.13);
+      --accent-editor: #7C8FFC;
+      --accent-chat: #7C8FFC;
+      --accent-term: #7C8FFC;
+      --danger: #E55C5C;
+      --success: #62C98A;
+
+      --row-h: 28px;
+      --tab-h: 32px;
+      --pane-pad-x: 16px;
+      --pane-pad-y: 12px;
+      --fs-tree: 13px;
+      --fs-editor: 14px;
+      --fs-h1: 28px;
+      --fs-h2: 20px;
+      --row-hover: rgba(255,255,255,0.04);
+      --row-selected: var(--accent-soft);
+      --focus-ring: 0 0 0 2px rgba(124, 143, 252, 0.3);
+    }
+
+    /* ============================================================
+       DIRECTION 1B — OBSIDIAN-DENSE
+       ============================================================ */
+    body[data-direction="1B"] {
+      --font-sans: "Inter", -apple-system, sans-serif;
+      --font-mono: "Berkeley Mono", "JetBrains Mono", Consolas, monospace;
+
+      --bg-canvas: #181613;
+      --bg-pane: #201D18;
+      --bg-elevated: #29251E;
+      --border-subtle: #33302A;
+      --border-strong: #4A4639;
+
+      --text-primary: #EDE7D7;
+      --text-secondary: #A89F8A;
+      --text-tertiary: #706A5C;
+
+      --accent-tree: #E6A23C;
+      --accent-editor: #7BB662;
+      --accent-chat: #66A3E0;
+      --accent-term: #D16B6B;
+      --accent: #E6A23C;
+      --accent-solid: #E6A23C;
+      --accent-soft: rgba(230, 162, 60, 0.12);
+      --link: #D8B46A;
+      --success: #7BB662;
+      --danger: #D16B6B;
+
+      --row-h: 22px;
+      --tab-h: 26px;
+      --pane-pad-x: 8px;
+      --pane-pad-y: 6px;
+      --fs-tree: 12px;
+      --fs-editor: 13px;
+      --fs-h1: 22px;
+      --fs-h2: 16px;
+      --row-hover: rgba(230, 162, 60, 0.06);
+      --row-selected: rgba(230, 162, 60, 0.14);
+      --row-selected-fg: #FDF5DC;
+      --tree-icon-color: var(--accent-tree);
+      --term-pad: 0 6px;
+      --term-bg: #120F0B;
+      --focus-ring: 0 0 0 1px var(--border-strong);
+    }
+    body[data-direction="1B"] .tree-row.selected { box-shadow: inset 3px 0 0 var(--accent-tree); }
+    body[data-direction="1B"] .editor-body { background: #181613; }
+
+    /* ============================================================
+       DIRECTION 1C — ARC-CONFIDENT
+       ============================================================ */
+    body[data-direction="1C"] {
+      --font-sans: "Inter", -apple-system, sans-serif;
+      --font-mono: "Berkeley Mono", "SF Mono", Consolas, monospace;
+      font-feature-settings: "ss01", "cv11";
+      letter-spacing: -0.01em;
+
+      --bg-canvas: #100C1D;
+      --bg-pane: rgba(22, 20, 40, 0.72);
+      --bg-elevated: rgba(30, 28, 55, 0.9);
+      --border-subtle: rgba(255, 255, 255, 0.06);
+      --border-strong: rgba(167, 139, 255, 0.4);
+
+      --text-primary: #F2EEFF;
+      --text-secondary: #B0A8D1;
+      --text-tertiary: #766E96;
+
+      --accent: #A78BFF;
+      --accent-solid: #A78BFF;
+      --accent-soft: rgba(167, 139, 255, 0.16);
+      --accent-editor: #A78BFF;
+      --accent-chat: #FF6B9D;
+      --accent-term: #5EEAD4;
+      --danger: #FF5E84;
+      --success: #5EEAD4;
+
+      --row-h: 34px;
+      --tab-h: 38px;
+      --pane-pad-x: 24px;
+      --pane-pad-y: 18px;
+      --fs-tree: 14px;
+      --fs-editor: 15px;
+      --fs-h1: 32px;
+      --fs-h2: 22px;
+      --row-hover: rgba(255, 255, 255, 0.05);
+      --row-selected: linear-gradient(90deg, rgba(167,139,255,0.22), rgba(255,107,157,0.12));
+      --focus-ring: 0 0 0 2px #A78BFF, 0 0 24px rgba(138, 103, 255, 0.4);
+    }
+    body[data-direction="1C"] {
+      background: radial-gradient(circle at 20% 20%, #1F1435 0%, #0D0820 40%, #100C1D 100%);
+    }
+    body[data-direction="1C"] .pane { backdrop-filter: blur(16px); }
+    body[data-direction="1C"] .topbar,
+    body[data-direction="1C"] .statusbar {
+      backdrop-filter: blur(16px);
+      background: rgba(22, 20, 40, 0.5);
+    }
+    body[data-direction="1C"] .topbar .brand {
+      background: linear-gradient(120deg, #A78BFF, #FF6B9D);
+      -webkit-background-clip: text; background-clip: text;
+      -webkit-text-fill-color: transparent;
+      font-weight: 700;
+    }
+    body[data-direction="1C"] .tree-row.selected {
+      background: var(--row-selected);
+      box-shadow: 0 0 0 1px rgba(167, 139, 255, 0.2) inset;
+      border-radius: 8px;
+      margin: 0 8px;
+      padding-left: calc(var(--pane-pad-x) - 8px);
+    }
+    body[data-direction="1C"] .editor-body { background: rgba(14, 11, 25, 0.5); }
+    body[data-direction="1C"] .tab.active {
+      background: rgba(167, 139, 255, 0.08);
+      border-top: 0;
+      border-radius: 8px 8px 0 0;
+      color: var(--text-primary);
+    }
+  </style>
+</head>
+<body data-direction="1A">
+
+<div class="picker">
+  <button data-dir="1A" class="active">1A · Linear-clean</button>
+  <button data-dir="1B">1B · Obsidian-dense</button>
+  <button data-dir="1C">1C · Arc-confident</button>
+</div>
+
+<div class="app">
+  <!-- TOP BAR -->
+  <div class="topbar">
+    <span class="brand">Arasul</span>
+    <span class="briefer">You have 3 unfinished notes in <code>projects/thesis</code> · today's focus: chapter 2 revision.</span>
+    <span class="update-pill">Update available</span>
+  </div>
+
+  <!-- THREE-PANE SHELL -->
+  <div class="shell">
+    <!-- TREE -->
+    <div class="pane tree-pane">
+      <div class="section-label">CONTENT</div>
+      <div class="tree-row"><span class="chev">▸</span><span class="icon">■</span>notes</div>
+      <div class="tree-row"><span class="chev">▾</span><span class="icon">■</span>projects</div>
+      <div class="tree-row nested"><span class="chev">▾</span><span class="icon">□</span>thesis</div>
+      <div class="tree-row nested-2 selected left-bar"><span class="chev"></span><span class="icon">·</span>chapter-2.md<span class="meta">12m</span></div>
+      <div class="tree-row nested-2"><span class="chev"></span><span class="icon">·</span>CLAUDE.md<span class="meta">2h</span></div>
+      <div class="tree-row nested-2"><span class="chev"></span><span class="icon">·</span>outline.md<span class="meta">3d</span></div>
+      <div class="tree-row nested"><span class="chev">▸</span><span class="icon">□</span>arasul-app</div>
+      <div class="tree-row nested"><span class="chev">▸</span><span class="icon">□</span>personal-site</div>
+      <div class="tree-row"><span class="chev">▸</span><span class="icon">■</span>communication</div>
+
+      <div class="section-label" style="margin-top: 16px;">MEMORY</div>
+      <div class="tree-row"><span class="chev"></span><span class="icon">·</span>MEMORY.md</div>
+      <div class="tree-row"><span class="chev"></span><span class="icon">·</span>projects.yaml</div>
+      <div class="tree-row"><span class="chev"></span><span class="icon">·</span>config.toml</div>
+    </div>
+
+    <!-- EDITOR -->
+    <div class="pane editor-pane">
+      <div class="tab-bar">
+        <div class="tab active">chapter-2.md <span class="dot"></span></div>
+        <div class="tab">outline.md</div>
+        <div class="tab">CLAUDE.md</div>
+      </div>
+      <div class="editor-body">
+        <h1>Chapter 2 — The Portable Workspace</h1>
+        <p class="muted">Draft · 1,412 words · autosaved 12 minutes ago</p>
+        <h2>2.1 What "portable" means here</h2>
+        <p>Most productivity tools assume the user is the context: the same person sitting in front of the same machine, connected to the same accounts. <code>Arasul</code> inverts that — the drive is the context. It carries identity, credentials, notes, projects, and the AI that understands them.</p>
+        <p>When a user plugs the SSD into a friend's laptop, the machine becomes theirs for the session. When they eject, nothing remains. This is not a technical feature; it is a claim about what a personal computer can be.</p>
+        <h2>2.2 The hardware contract</h2>
+        <p>A USB-C SSD, formatted exFAT, with a vault-gated <code>.boot/</code> directory and a user-readable <code>content/</code> tree. Three cross-platform binaries — macOS, Windows, Linux — live at the drive root…</p>
+      </div>
+    </div>
+
+    <!-- RIGHT PANE -->
+    <div class="pane right-pane">
+      <div class="chat">
+        <div class="chat-messages">
+          <div class="msg user">
+            <div class="role">You</div>
+            <div class="body">Summarise the three main arguments in chapter 2 so far.</div>
+          </div>
+          <div class="msg assistant">
+            <div class="role">Claude</div>
+            <div class="body">
+              <strong>1. Portability as inverted context.</strong> You frame portability not as mobility of a user, but as relocation of the computing context itself — the drive carries identity.<br><br>
+              <strong>2. Ephemeral surface.</strong> Nothing persists on the host machine — the host is a stage, not a home.<br><br>
+              <strong>3. Hardware as contract.</strong> A specific SSD format + three binaries make the abstraction real; the physical medium is load-bearing, not incidental.
+            </div>
+          </div>
+          <div class="msg user">
+            <div class="role">You</div>
+            <div class="body">Strong. Which of these needs more evidence?</div>
+          </div>
+        </div>
+        <div class="chat-input">
+          <textarea placeholder="Ask Claude about chapter-2.md..."></textarea>
+          <div class="hint">@ to ground on a file · / for commands · ⌘⏎ to send</div>
+        </div>
+      </div>
+      <div class="terminal">
+        <div class="line"><span class="prompt">arasul</span> <span style="color: var(--text-secondary)">thesis</span> ▸ git status</div>
+        <div class="line" style="color: var(--text-secondary)">On branch main · 3 uncommitted files:</div>
+        <div class="line" style="color: var(--text-secondary)">  M chapter-2.md</div>
+        <div class="line" style="color: var(--text-secondary)">  M outline.md</div>
+        <div class="line" style="color: var(--text-secondary)">  ? notes/draft-ideas.md</div>
+        <div class="line"><span class="prompt">arasul</span> <span style="color: var(--text-secondary)">thesis</span> ▸ <span class="cursor"></span></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- STATUS BAR -->
+  <div class="statusbar">
+    <span class="kbd">⌘P</span> projects
+    <span class="kbd">⌘N</span> new
+    <span class="kbd">⌘K</span> command
+    <span class="kbd">⌘⇧C</span> claude
+    <span class="kbd">⌘J</span> terminal
+    <span class="kbd">⌘,</span> settings
+    <span style="margin-left: auto;">vault unlocked · drive /Volumes/Arasul · v0.1.0</span>
+  </div>
+</div>
+
+<script>
+  document.querySelectorAll('.picker button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const dir = btn.dataset.dir;
+      document.body.dataset.direction = dir;
+      document.querySelectorAll('.picker button').forEach(b => b.classList.toggle('active', b === btn));
+    });
+  });
+  // Keyboard shortcut: 1/2/3 to switch directions.
+  document.addEventListener('keydown', (e) => {
+    if (e.key === '1' || e.key === '2' || e.key === '3') {
+      const map = { '1': '1A', '2': '1B', '3': '1C' };
+      const target = document.querySelector(`.picker button[data-dir="${map[e.key]}"]`);
+      if (target) target.click();
+    }
+  });
+</script>
+
+</body>
+</html>

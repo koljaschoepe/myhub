@@ -1,0 +1,126 @@
+/* FULL tier ≥1280 — three side-by-side panels. */
+.arasul-shell {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  width: 100%;
+  height: 100%;
+}
+
+.arasul-pane {
+  background: var(--bg-pane);
+  display: flex;
+  flex-direction: column;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.arasul-pane-editor { background: var(--bg-canvas); }
+
+.arasul-resize {
+  width: 1px;
+  background: var(--border-subtle);
+  position: relative;
+  cursor: col-resize;
+  transition: background var(--motion-fast);
+}
+.arasul-resize:hover,
+.arasul-resize[data-resize-handle-active] { background: var(--border-strong); }
+.arasul-resize::before {
+  content: "";
+  position: absolute;
+  top: 0; left: -3px; right: -3px; bottom: 0;
+}
+
+/* MEDIUM tier 900-1279 — icon rail on the left, editor + right split. */
+.arasul-shell-medium {
+  position: relative;
+}
+
+.arasul-shell-medium .arasul-shell-inner {
+  flex: 1;
+  min-height: 0;
+  width: 100%;
+  height: 100%;
+  display: flex;
+  margin-left: 40px;
+}
+
+.arasul-tree-rail {
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  width: 40px;
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding-top: 16px;
+  background: var(--bg-pane);
+  border-right: var(--border);
+  color: var(--text-secondary);
+  transition: background var(--motion-fast), color var(--motion-fast);
+  z-index: 2;
+}
+
+.arasul-tree-rail:hover,
+.arasul-tree-rail.open { color: var(--accent); background: var(--bg-elevated); }
+
+.arasul-tree-overlay {
+  position: absolute;
+  inset: 0 0 0 40px;
+  background: rgba(0, 0, 0, 0.35);
+  z-index: 3;
+  display: flex;
+}
+
+.arasul-tree-overlay-body {
+  width: 260px;
+  max-width: 80%;
+  border-right: var(--border);
+  box-shadow: 8px 0 24px rgba(0, 0, 0, 0.25);
+}
+
+/* COMPACT tier <900 — single-pane + bottom tabs. */
+.arasul-shell-compact {
+  flex: 1;
+  min-height: 0;
+  display: flex;
+  flex-direction: column;
+}
+
+.arasul-shell-compact-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+}
+
+.arasul-compact-panel {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-canvas);
+}
+
+.arasul-compact-panel.hidden { display: none; }
+
+.arasul-compact-tabs {
+  flex: 0 0 56px;
+  display: flex;
+  border-top: var(--border);
+  background: var(--bg-pane);
+}
+
+.arasul-compact-tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  transition: color var(--motion-fast);
+}
+
+.arasul-compact-tab:hover { color: var(--text-secondary); }
+.arasul-compact-tab.active { color: var(--accent); }

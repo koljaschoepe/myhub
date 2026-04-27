@@ -1,0 +1,108 @@
+.arasul-cmdk-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.5);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 12vh 16px 16px;
+  z-index: 1000;
+  animation: cmdk-fade var(--motion-fast) ease-out;
+}
+
+@media (max-height: 720px) {
+  .arasul-cmdk-overlay { padding-top: 48px; }
+}
+
+@keyframes cmdk-fade { from { opacity: 0; } to { opacity: 1; } }
+
+.arasul-cmdk-box {
+  width: 560px;
+  max-width: 90vw;
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.5);
+}
+
+.arasul-cmdk-input {
+  width: 100%;
+  padding: var(--sp-4);
+  font-size: var(--fs-lg);
+  background: transparent;
+  border: 0;
+  color: var(--text-primary);
+  outline: none;
+  border-bottom: var(--border);
+}
+
+.arasul-cmdk-list {
+  max-height: 420px;
+  overflow-y: auto;
+  padding: var(--sp-2);
+}
+
+.arasul-cmdk-list [cmdk-group-heading] {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-xs);
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-tertiary);
+  font-weight: var(--fw-semibold);
+}
+
+.arasul-cmdk-list [cmdk-item] {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  cursor: pointer;
+  user-select: none;
+}
+
+.arasul-cmdk-list [cmdk-item][data-selected="true"] {
+  background: var(--accent-soft);
+}
+
+.arasul-cmdk-list [cmdk-item] kbd {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  background: var(--bg-canvas);
+  padding: 2px 6px;
+  border-radius: var(--radius-sm);
+  border: var(--border);
+}
+
+.arasul-cmdk-list [cmdk-empty] {
+  padding: var(--sp-4);
+  color: var(--text-tertiary);
+  text-align: center;
+  font-size: var(--fs-sm);
+}
+
+.arasul-cmdk-sub {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  font-family: var(--font-mono);
+}
+
+/* Fuzzy-match highlight (Phase D). cmdk has no native highlight, so we
+   wrap subsequence-matched chars ourselves. Subtle accent emphasis. */
+.arasul-cmdk-list mark {
+  background: transparent;
+  color: var(--accent);
+  font-weight: var(--fw-semibold);
+}
+
+/* "+ N more" footer when files list is truncated. */
+.arasul-cmdk-more {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  font-style: italic;
+}

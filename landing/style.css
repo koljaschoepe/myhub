@@ -1,0 +1,272 @@
+/* Arasul landing — 1A Linear-clean shared language. */
+
+/* Geist font face — drop the .woff2 binaries from vercel.com/font into
+   landing/fonts/. Without them, the rules silently fall back to system
+   fonts (defined in --font-sans). font-display: swap avoids FOIT. */
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 400;
+  font-display: swap;
+  src: url("/fonts/Geist-Regular.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 500;
+  font-display: swap;
+  src: url("/fonts/Geist-Medium.woff2") format("woff2");
+}
+@font-face {
+  font-family: "Geist";
+  font-style: normal;
+  font-weight: 600;
+  font-display: swap;
+  src: url("/fonts/Geist-Semibold.woff2") format("woff2");
+}
+
+:root {
+  --bg: #0E0F11;
+  --pane: #15171B;
+  --elevated: #1C1F25;
+  --border: #232730;
+  --text: #E6E8EC;
+  --text-muted: #9AA0AB;
+  --text-dim: #636976;
+  --accent: #7C8FFC;
+  --accent-strong: #6578E8;
+  --accent-soft: rgba(124, 143, 252, 0.13);
+
+  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+}
+
+*, *::before, *::after { box-sizing: border-box; }
+html, body { margin: 0; padding: 0; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.55;
+  color: var(--text);
+  background: var(--bg);
+  -webkit-font-smoothing: antialiased;
+}
+
+a { color: var(--accent); text-decoration: none; }
+a:hover { color: var(--accent-strong); }
+
+.hero {
+  padding: 24px 48px 120px;
+  background: linear-gradient(180deg, var(--bg) 0%, var(--pane) 100%);
+  border-bottom: 1px solid var(--border);
+}
+
+.nav {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding-bottom: 80px;
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.brand {
+  font-size: 18px;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.nav-links { display: flex; gap: 28px; }
+.nav-links a { color: var(--text-muted); font-size: 14px; }
+.nav-links a:hover { color: var(--text); }
+
+.hero-body {
+  max-width: 760px;
+  margin: 0 auto;
+  text-align: left;
+}
+
+.hero-body h1 {
+  font-size: clamp(40px, 6vw, 72px);
+  font-weight: 600;
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  margin: 0 0 28px;
+}
+
+.lede {
+  color: var(--text-muted);
+  font-size: 19px;
+  line-height: 1.55;
+  margin: 0 0 20px;
+  max-width: 640px;
+}
+
+.cta-row {
+  display: flex;
+  gap: 16px;
+  margin-top: 40px;
+}
+
+.cta {
+  display: inline-flex;
+  align-items: center;
+  padding: 13px 22px;
+  border-radius: 8px;
+  font-weight: 500;
+  font-size: 15px;
+  transition: background 160ms ease, color 160ms ease;
+}
+
+.cta.primary {
+  background: var(--accent);
+  color: var(--bg);
+}
+.cta.primary:hover { background: var(--accent-strong); color: #0E0F11; }
+
+.cta.ghost {
+  background: transparent;
+  color: var(--text);
+  border: 1px solid var(--border);
+}
+.cta.ghost:hover { background: var(--elevated); }
+
+.section {
+  padding: 96px 48px;
+}
+.section.alt { background: var(--pane); }
+
+.section-inner {
+  max-width: 1080px;
+  margin: 0 auto;
+}
+
+.section h2 {
+  font-size: clamp(28px, 4vw, 40px);
+  margin: 0 0 48px;
+  font-weight: 600;
+  letter-spacing: -0.01em;
+}
+
+.section p, .section li {
+  color: var(--text-muted);
+  max-width: 700px;
+}
+
+.steps {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 24px;
+}
+
+.step {
+  background: var(--elevated);
+  padding: 28px;
+  border-radius: 12px;
+  border: 1px solid var(--border);
+}
+
+.step-n {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-weight: 600;
+  font-size: 14px;
+  margin-bottom: 16px;
+}
+
+.step h3 {
+  font-size: 18px;
+  margin: 0 0 8px;
+  color: var(--text);
+  font-weight: 500;
+}
+
+.step p {
+  font-size: 14px;
+  color: var(--text-muted);
+  line-height: 1.5;
+  margin: 0;
+}
+
+.bullets {
+  padding: 0;
+  margin: 32px 0 0;
+  list-style: none;
+  display: grid;
+  gap: 12px;
+}
+
+.bullets li {
+  padding-left: 24px;
+  position: relative;
+  color: var(--text);
+}
+
+.bullets li::before {
+  content: "→";
+  position: absolute;
+  left: 0;
+  color: var(--accent);
+}
+
+.sku-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+  gap: 24px;
+}
+
+.sku {
+  background: var(--pane);
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  padding: 32px;
+}
+
+.section.alt .sku { background: var(--elevated); }
+
+.sku h3 {
+  font-size: 20px;
+  margin: 0 0 12px;
+  font-weight: 500;
+  color: var(--text);
+}
+
+.sku p {
+  color: var(--text-muted);
+  font-size: 15px;
+  margin: 0 0 16px;
+}
+
+.sku-status {
+  color: var(--text-dim);
+  font-size: 13px;
+  font-style: italic;
+  margin-bottom: 20px !important;
+}
+
+.foot {
+  padding: 32px 48px;
+  border-top: 1px solid var(--border);
+  font-size: 13px;
+  color: var(--text-dim);
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.foot a { color: var(--text-muted); }
+
+@media (max-width: 640px) {
+  .hero { padding: 20px 20px 80px; }
+  .section { padding: 64px 20px; }
+  .nav { padding-bottom: 40px; }
+  .nav-links { display: none; }
+}

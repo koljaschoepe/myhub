@@ -1,0 +1,366 @@
+.arasul-leftpane {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+}
+
+.arasul-leftpane-tree {
+  flex: 1;
+  min-height: 0;
+  overflow: hidden;
+  border-top: var(--border);
+}
+
+/* ---- Project picker ---- */
+
+.arasul-picker {
+  position: relative;
+  padding: var(--sp-2);
+  flex: 0 0 auto;
+}
+
+.arasul-picker-trigger {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  cursor: pointer;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+
+.arasul-picker-trigger:hover { background: var(--hover); border-color: var(--border-strong); }
+
+.arasul-picker-icon { color: var(--text-secondary); flex-shrink: 0; }
+
+.arasul-picker-name {
+  flex: 1;
+  text-align: left;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-weight: var(--fw-medium);
+}
+
+.arasul-picker-chev {
+  color: var(--text-secondary);
+  transition: transform var(--motion-fast);
+  flex-shrink: 0;
+}
+.arasul-picker-chev.open { transform: rotate(180deg); }
+
+.arasul-picker-menu {
+  position: absolute;
+  top: calc(100% + 2px);
+  left: var(--sp-2);
+  right: var(--sp-2);
+  z-index: 50;
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
+  padding: 4px;
+  max-height: 400px;
+  overflow-y: auto;
+  animation: picker-in 120ms ease-out;
+}
+
+@keyframes picker-in {
+  from { opacity: 0; transform: translateY(-4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.arasul-picker-section { padding: 2px; }
+.arasul-picker-section + .arasul-picker-section {
+  border-top: 1px solid var(--border-subtle);
+  margin-top: 4px;
+  padding-top: 6px;
+}
+
+.arasul-picker-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  padding: 6px var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast), color var(--motion-fast);
+  text-align: left;
+}
+
+.arasul-picker-item:hover { background: var(--hover); }
+.arasul-picker-item.active { background: var(--accent-soft); color: var(--accent); }
+
+.arasul-picker-item span:nth-child(2) {
+  flex: 1;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arasul-picker-badge {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-family: var(--font-mono);
+  padding: 1px 6px;
+  border: 1px solid var(--border-subtle);
+  border-radius: 10px;
+  flex-shrink: 0;
+}
+
+/* ---- Generic modal ---- */
+
+.arasul-modal-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  animation: cmdk-fade var(--motion-fast) ease-out;
+}
+
+.arasul-modal {
+  width: min(460px, 92vw);
+  max-height: 88vh;
+  overflow-y: auto;
+  background: var(--bg-pane);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+}
+
+.arasul-modal-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: var(--sp-4) var(--sp-5);
+  border-bottom: var(--border);
+}
+
+.arasul-modal-head h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+}
+
+.arasul-modal-close {
+  color: var(--text-secondary);
+  padding: 4px;
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-modal-close:hover { background: var(--hover); color: var(--text-primary); }
+
+.arasul-modal-body {
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.arasul-modal-body label {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+
+.arasul-modal-body input,
+.arasul-modal-body textarea {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-md);
+  font-family: inherit;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  transition: border-color var(--motion-fast), background var(--motion-fast);
+}
+.arasul-modal-body input:hover,
+.arasul-modal-body textarea:hover { border-color: var(--border-strong); }
+.arasul-modal-body input:focus,
+.arasul-modal-body textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+  background: var(--bg-pane);
+}
+.arasul-modal-body input::placeholder,
+.arasul-modal-body textarea::placeholder {
+  color: var(--text-tertiary);
+}
+
+.arasul-modal-body textarea { resize: vertical; min-height: 72px; }
+
+.arasul-modal-tabs {
+  display: flex;
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  padding: 2px;
+}
+
+.arasul-modal-tab {
+  flex: 1;
+  padding: 6px var(--sp-3);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.arasul-modal-tab:hover { color: var(--text-primary); }
+.arasul-modal-tab.active { background: var(--bg-pane); color: var(--text-primary); }
+
+.arasul-modal-actions {
+  display: flex;
+  gap: var(--sp-3);
+  justify-content: flex-end;
+  margin-top: var(--sp-4);
+}
+
+.arasul-modal-actions .arasul-btn { width: auto; padding: var(--sp-2) var(--sp-4); }
+
+/* Inline error banner inside modals — needs a clear visual gap from the
+   form field above. Without this the red text crashes into the input
+   border and looks broken. */
+.arasul-modal-body .arasul-error {
+  margin-top: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--danger) 10%, transparent);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  line-height: 1.4;
+}
+
+.arasul-muted-sm {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  line-height: var(--lh-body);
+}
+
+.arasul-muted-sm code {
+  font-family: var(--font-mono);
+  background: var(--bg-elevated);
+  padding: 1px 5px;
+  border-radius: var(--radius-sm);
+  font-size: 0.9em;
+}
+
+.arasul-code-block {
+  display: block;
+  padding: var(--sp-3);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  word-break: break-all;
+}
+
+/* ---- Git actions row (under the project picker) ---- */
+
+.arasul-git-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 4px var(--sp-2) 8px;
+  border-bottom: var(--border);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.arasul-git-meta {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex: 1;
+  min-width: 0;
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.arasul-git-branch {
+  color: var(--text-secondary);
+}
+
+.arasul-git-counter {
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+  padding: 0 3px;
+}
+.arasul-git-counter.dirty { color: var(--accent); }
+
+.arasul-git-spacer { flex: 1; }
+
+.arasul-git-disconnected {
+  color: var(--text-tertiary);
+  font-style: italic;
+}
+.arasul-git-disconnected svg { opacity: 0.6; }
+
+.arasul-git-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 3px 8px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-git-btn:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+.arasul-git-btn.primary {
+  color: var(--accent);
+  background: var(--accent-soft);
+  border-color: transparent;
+}
+.arasul-git-btn.primary:hover:not(:disabled) { background: var(--accent); color: var(--text-on-accent); }
+.arasul-git-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+.arasul-git-msg {
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-bold);
+  margin-left: 2px;
+  cursor: help;
+}
+.arasul-git-msg-ok  { color: var(--success); }
+.arasul-git-msg-err { color: var(--danger); }
+
+/* Checkbox row in NewProjectModal. */
+.arasul-checkbox-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+}
+.arasul-checkbox-row input[type="checkbox"] {
+  width: auto;
+  padding: 0;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}

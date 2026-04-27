@@ -1,0 +1,278 @@
+/*
+ * Arasul theme — Direction 1A · Linear-clean.
+ * Locked 2026-04-24 (Phase 0 Step 0.11). Source of truth for tokens;
+ * all component CSS references these custom properties, never hex directly.
+ */
+
+:root {
+  /* --- Palette ------------------------------------------------------- */
+  --bg-canvas: #0E0F11;
+  --bg-pane: #15171B;
+  --bg-elevated: #1C1F25;
+  --border-subtle: #232730;
+  --border-strong: #303640;
+
+  --text-primary: #E6E8EC;
+  --text-secondary: #9AA0AB;
+  --text-tertiary: #636976;
+  --text-on-accent: var(--bg-canvas);
+
+  --accent: #7C8FFC;
+  --accent-soft: rgba(124, 143, 252, 0.13);
+  --accent-strong: #6578E8;
+
+  --danger: #E55C5C;
+  --danger-soft: rgba(229, 92, 92, 0.12);
+  --success: #62C98A;
+  --success-soft: rgba(98, 201, 138, 0.12);
+  --warning: #E6A23C;
+
+  /* --- Syntax highlighting (lowlight / hljs) ----------------------- */
+  --hljs-comment: #5c6370;
+  --hljs-keyword: #c678dd;
+  --hljs-string:  #98c379;
+  --hljs-number:  #d19a66;
+  --hljs-fn:      #61afef;
+  --hljs-builtin: #56b6c2;
+  --hljs-tag:     #e06c75;
+  --code-block-bg: #0a0b0d;
+
+  /* --- Typography --------------------------------------------------- */
+  --font-sans: "Geist", "Inter", -apple-system, BlinkMacSystemFont, sans-serif;
+  --font-mono: "Geist Mono", "SF Mono", "JetBrains Mono", Consolas, monospace;
+
+  --fs-xs: 11px;
+  --fs-sm: 12px;
+  --fs-body: 13px;
+  --fs-md: 14px;
+  --fs-lg: 16px;
+  --fs-xl: 20px;
+  --fs-display: 28px;
+
+  /* Editor-specific scale (markdown WYSIWYG body + headings, code-block). */
+  --fs-editor-body: 15px;
+  --fs-editor-code: 13px;
+  --fs-h1: 32px;
+  --fs-h2: 24px;
+  --fs-h3: 19px;
+  --fs-h4: 16px;
+  --fs-h5: 14px;
+  --fs-h6: 13px;
+
+  /* Markdown editor toolbar (Phase C). */
+  --toolbar-h: 36px;
+  --toolbar-icon: 16px;
+  --toolbar-btn: 28px;
+
+  /* Reading measure: max content width inside editor canvas. */
+  --measure: 760px;
+  --editor-pad-y: 24px;
+  --editor-pad-y-bottom: 40px;
+
+  --fw-regular: 400;
+  --fw-medium: 500;
+  --fw-semibold: 600;
+
+  --lh-tight: 1.3;
+  --lh-body: 1.5;
+  --lh-loose: 1.65;
+
+  /* --- Spacing (4px base) ------------------------------------------- */
+  --sp-1: 4px;
+  --sp-2: 8px;
+  --sp-3: 12px;
+  --sp-4: 16px;
+  --sp-6: 24px;
+  --sp-8: 32px;
+
+  --row-tree: 28px;
+  --row-tab: 32px;
+  --pane-pad-x: 16px;
+  --pane-pad-y: 12px;
+}
+
+/* UI density override — tightens or loosens row heights and pane padding
+   without touching the 4px spacing scale. The body class is set by
+   `lib/density.ts`. Default ("normal") inherits from :root. */
+:root[data-density="compact"] {
+  --row-tree: 24px;
+  --row-tab: 28px;
+  --pane-pad-x: 12px;
+  --pane-pad-y: 8px;
+}
+:root[data-density="spacious"] {
+  --row-tree: 32px;
+  --row-tab: 36px;
+  --pane-pad-x: 20px;
+  --pane-pad-y: 16px;
+}
+
+:root {
+
+  /* --- Borders + radii --------------------------------------------- */
+  --radius-sm: 4px;
+  --radius: 6px;
+  --radius-lg: 8px;
+  --border: 1px solid var(--border-subtle);
+  --border-focus: 1px solid var(--border-strong);
+
+  /* --- Elevation --------------------------------------------------- */
+  --focus-ring: 0 0 0 2px var(--accent), 0 0 0 4px rgba(124, 143, 252, 0.25);
+  --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
+  --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+  /* --- Modal / overlay backdrop. One token everywhere so the dimming
+         level stays consistent across CommandPalette, Settings, etc. */
+  --backdrop: rgba(0, 0, 0, 0.5);
+
+  /* --- Micro-text size (tab labels, status pills, micro-UI). */
+  --fs-xxs: 10px;
+
+  /* --- Motion ------------------------------------------------------- */
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
+  --dur-fast: 120ms;
+  --dur-base: 160ms;
+  --dur-slow: 240ms;
+  --motion-fast: var(--dur-fast) var(--ease-out);
+  --motion: var(--dur-base) var(--ease-out);
+  --motion-slow: var(--dur-slow) var(--ease-out);
+
+  /* --- Overlays ----------------------------------------------------- */
+  --hover: rgba(255, 255, 255, 0.04);
+  --press: rgba(255, 255, 255, 0.08);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root {
+    --dur-fast: 0ms;
+    --dur-base: 0ms;
+    --dur-slow: 0ms;
+    --motion-fast: 0ms;
+    --motion: 0ms;
+    --motion-slow: 0ms;
+  }
+}
+
+/* --- Light theme --------------------------------------------------- */
+/* Activated by [data-theme="light"] on <html>. Inverted neutrals;
+   accent stays the same hue for brand consistency, but darker variants
+   pick up so AA contrast holds against the light surface. */
+:root[data-theme="light"] {
+  --bg-canvas: #FAFAFA;
+  --bg-pane: #F4F4F5;
+  --bg-elevated: #FFFFFF;
+  --border-subtle: #E4E4E7;
+  --border-strong: #D4D4D8;
+
+  --text-primary: #18181B;
+  --text-secondary: #52525B;
+  --text-tertiary: #A1A1AA;
+  --text-on-accent: #FFFFFF;
+
+  --accent: #5764E5;
+  --accent-soft: rgba(87, 100, 229, 0.10);
+  --accent-strong: #4753C8;
+
+  --danger: #DC2626;
+  --danger-soft: rgba(220, 38, 38, 0.10);
+  --success: #16A34A;
+  --success-soft: rgba(22, 163, 74, 0.10);
+  --warning: #D97706;
+
+  --hover: rgba(0, 0, 0, 0.04);
+  --press: rgba(0, 0, 0, 0.08);
+
+  /* Code blocks need their own light surface — bg-canvas is already
+     near-white, so use a slightly recessed card. */
+  --code-block-bg: #F1F1F4;
+
+  /* Syntax highlighting palette tuned for light surfaces (One Light). */
+  --hljs-comment: #A0A1A7;
+  --hljs-keyword: #A626A4;
+  --hljs-string:  #50A14F;
+  --hljs-number:  #986801;
+  --hljs-fn:      #4078F2;
+  --hljs-builtin: #0184BC;
+  --hljs-tag:     #E45649;
+}
+
+/* --- Reset + base ----------------------------------------------------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html,
+body,
+#root { margin: 0; padding: 0; height: 100%; }
+
+body {
+  font-family: var(--font-sans);
+  font-size: var(--fs-md);
+  line-height: var(--lh-body);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  overflow: hidden;
+}
+
+button {
+  font: inherit;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  cursor: pointer;
+}
+
+button:focus-visible,
+input:focus-visible,
+textarea:focus-visible,
+[tabindex]:focus-visible {
+  outline: 0;
+  box-shadow: var(--focus-ring);
+  border-radius: var(--radius-sm);
+}
+
+input,
+textarea {
+  font: inherit;
+  color: var(--text-primary);
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  padding: var(--sp-2) var(--sp-3);
+  transition: border-color var(--motion-fast), box-shadow var(--motion-fast);
+}
+
+input:focus,
+textarea:focus {
+  border-color: var(--border-strong);
+}
+
+code,
+pre {
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+}
+
+::selection {
+  background: var(--accent-soft);
+  color: var(--text-primary);
+}
+
+/* Scrollbars — thin, subtle. Firefox + Chromium + Safari. */
+* {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+::-webkit-scrollbar { width: 10px; height: 10px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb {
+  background: var(--border-subtle);
+  border-radius: 5px;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+}
+::-webkit-scrollbar-thumb:hover { background: var(--border-strong); background-clip: padding-box; }

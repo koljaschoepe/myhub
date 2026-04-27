@@ -1,0 +1,235 @@
+.arasul-settings-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 900;
+}
+
+.arasul-settings {
+  width: min(880px, 92vw);
+  height: min(620px, 90vh);
+  display: flex;
+  background: var(--bg-pane);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  overflow: hidden;
+}
+
+/* C3 — on narrow viewports, stack sidebar above body and let the whole
+   thing scroll. */
+@media (max-width: 720px) {
+  .arasul-settings {
+    flex-direction: column;
+    height: 95vh;
+  }
+  .arasul-settings-sidebar {
+    flex: 0 0 auto;
+    border-right: 0;
+    border-bottom: var(--border);
+    flex-direction: row;
+    overflow-x: auto;
+    padding: var(--sp-2);
+  }
+  .arasul-settings-title { display: none; }
+  .arasul-settings-spacer { display: none; }
+  .arasul-settings-tab { flex: 0 0 auto; white-space: nowrap; }
+  .arasul-settings-body { padding: var(--sp-4) var(--sp-5); }
+}
+
+.arasul-settings-sidebar {
+  flex: 0 0 200px;
+  background: var(--bg-canvas);
+  border-right: var(--border);
+  display: flex;
+  flex-direction: column;
+  padding: var(--sp-3);
+}
+
+.arasul-settings-title {
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-semibold);
+  padding: var(--sp-2) var(--sp-3);
+  color: var(--text-primary);
+  margin-bottom: var(--sp-3);
+}
+
+.arasul-settings-tab {
+  display: block;
+  text-align: left;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--radius);
+  color: var(--text-secondary);
+  font-size: var(--fs-md);
+  margin-bottom: 2px;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.arasul-settings-tab:hover { background: var(--hover); color: var(--text-primary); }
+.arasul-settings-tab.active { background: var(--accent-soft); color: var(--accent); }
+
+.arasul-settings-spacer { flex: 1; }
+
+.arasul-settings-body {
+  flex: 1;
+  overflow-y: auto;
+  padding: var(--sp-6) var(--sp-8);
+  background: var(--bg-pane);
+}
+
+.arasul-settings-tab-body { max-width: 560px; }
+
+.arasul-settings-tab-body h2 {
+  margin: 0 0 var(--sp-4);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.arasul-settings-tab-body h3 {
+  margin: var(--sp-6) 0 var(--sp-2);
+  font-size: var(--fs-md);
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  font-size: var(--fs-xs);
+}
+
+.arasul-settings-tab-body section { margin-bottom: var(--sp-6); }
+
+.arasul-settings-tab-body label {
+  display: block;
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  margin: var(--sp-3) 0 var(--sp-1);
+}
+
+.arasul-settings-tab-body input,
+.arasul-settings-tab-body select {
+  width: 100%;
+  font-size: var(--fs-md);
+  margin-top: 4px;
+}
+
+.arasul-settings-tab-body .arasul-muted {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  margin: 0 0 var(--sp-3);
+  line-height: var(--lh-body);
+}
+
+.arasul-settings-tab-body .arasul-ok { color: var(--success); font-size: var(--fs-sm); margin-top: var(--sp-2); }
+.arasul-settings-tab-body .arasul-error { color: var(--danger); font-size: var(--fs-sm); margin-top: var(--sp-2); }
+
+.arasul-settings-tab-body .arasul-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-3); }
+.arasul-settings-tab-body .arasul-actions .arasul-btn { width: auto; padding: var(--sp-2) var(--sp-4); }
+
+.arasul-kv {
+  display: grid;
+  gap: var(--sp-2);
+  margin-bottom: var(--sp-4);
+}
+
+.arasul-kv > div {
+  display: flex;
+  justify-content: space-between;
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-elevated);
+  border-radius: var(--radius);
+  font-size: var(--fs-body);
+}
+
+.arasul-kv span:first-child { color: var(--text-secondary); }
+.arasul-kv span:last-child { color: var(--text-primary); font-variant-numeric: tabular-nums; }
+
+.arasul-status-pill {
+  display: inline-block;
+  padding: 4px 12px;
+  border-radius: 12px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  margin-bottom: var(--sp-4);
+}
+
+.arasul-settings-tab-body ul { padding-left: var(--sp-6); color: var(--text-secondary); }
+.arasul-settings-tab-body .arasul-btn { margin-top: var(--sp-2); }
+
+/* Theme picker + density picker (segmented control). */
+.arasul-theme-group {
+  display: inline-flex;
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  padding: 2px;
+  gap: 2px;
+}
+.arasul-theme-opt {
+  padding: var(--sp-2) var(--sp-4);
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-theme-opt:hover { color: var(--text-primary); }
+.arasul-theme-opt.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+
+/* Toggle row — checkbox + label, used in Editor / GitHub tabs. */
+.arasul-toggle-row {
+  display: flex !important;
+  flex-direction: row !important;
+  align-items: center;
+  gap: var(--sp-2);
+  margin: var(--sp-3) 0 !important;
+  font-size: var(--fs-sm);
+  color: var(--text-primary);
+  cursor: pointer;
+  user-select: none;
+}
+.arasul-toggle-row input[type="checkbox"] {
+  width: auto;
+  margin: 0;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+
+/* Settings inputs/selects — match the modal field styling from LeftPane. */
+.arasul-settings-tab-body input[type="text"],
+.arasul-settings-tab-body input[type="password"],
+.arasul-settings-tab-body input:not([type]),
+.arasul-settings-tab-body select,
+.arasul-settings-tab-body textarea {
+  width: 100%;
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-md);
+  font-family: inherit;
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  transition: border-color var(--motion-fast);
+}
+.arasul-settings-tab-body input:focus,
+.arasul-settings-tab-body select:focus,
+.arasul-settings-tab-body textarea:focus {
+  outline: none;
+  border-color: var(--accent);
+}
+.arasul-settings-tab-body textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+.arasul-settings-tab-body input[type="range"] {
+  width: 100%;
+  accent-color: var(--accent);
+  padding: 0;
+  background: transparent;
+  border: none;
+}

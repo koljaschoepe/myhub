@@ -1,0 +1,86 @@
+[package]
+name = "arasul-app"
+version = "0.1.0"
+description = "Arasul — portable AI workspace on a USB-C SSD"
+authors = ["Kolja Schoepe <kolja.schoepe@unit-ix.de>"]
+edition = "2021"
+license = "MIT"
+
+# See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
+
+[lib]
+# The `_lib` suffix may seem redundant but it is necessary
+# to make the lib name unique and wouldn't conflict with the bin name.
+# This seems to be only an issue on Windows, see https://github.com/rust-lang/cargo/issues/8519
+name = "arasul_app_lib"
+crate-type = ["staticlib", "cdylib", "rlib"]
+
+[build-dependencies]
+tauri-build = { version = "2", features = [] }
+
+[dependencies]
+tauri = { version = "2", features = [] }
+tauri-plugin-opener = "2"
+tauri-plugin-dialog = "2"
+tauri-plugin-window-state = "2"
+tauri-plugin-single-instance = "2"
+serde = { version = "1", features = ["derive"] }
+serde_json = "1"
+
+# PTY host for the embedded terminal pane.
+portable-pty = "0.9"
+
+# Async channel used to bridge the PTY reader thread into Tauri events.
+parking_lot = "0.12"
+
+# Vault crypto — see docs/vault-decision.md for why this stack was chosen
+# over tauri-plugin-stronghold and age.
+argon2 = "0.5"
+chacha20poly1305 = "0.10"
+rand = "0.8"
+secrecy = "0.10"
+zeroize = { version = "1", features = ["derive"] }
+thiserror = "1"
+uuid = { version = "1", features = ["v4"] }
+
+# PTY data-stream base64 encoding on the wire.
+base64 = "0.22"
+
+# Filesystem walker for list_tree.
+walkdir = "2"
+
+# .gitignore + .ignore parser. Used by list_tree / list_project_files
+# so dev-detritus (node_modules, target, dist, .DS_Store, …) doesn't
+# clutter the file picker even when no tree-filter.json is provided.
+ignore = "0.4"
+
+# YAML for memory/projects.yaml.
+serde_yaml = "0.9"
+
+# TOML for memory/config.toml.
+toml = "0.8"
+
+# HTTP for update checks (GitHub Releases API).
+ureq = { version = "2", features = ["json"] }
+
+# SHA-256 for release-bundle checksum verification.
+sha2 = "0.10"
+
+# Passphrase-strength estimation (also used in onboarding screen).
+# We also do it on the frontend with zxcvbn-ts for UX, but backend validates too.
+
+# Spreadsheet axis (Phase 2 of vision-v3). Pure Rust, MIT/Apache.
+calamine = "0.26"           # .xlsx/.xls/.ods read
+rust_xlsxwriter = "0.78"    # .xlsx write with formulas + formatting
+
+# Workflow framework (Phase 3 of vision-v3).
+glob = "0.3"                # file.read.glob step pattern matching
+rusqlite = { version = "0.32", features = ["bundled"] }   # workflow run persistence at memory/runs/runs.db
+
+# macOS DiskArbitration for DriveWatcher (1.8). Gated by target_os below.
+[target.'cfg(target_os = "macos")'.dependencies]
+core-foundation = "0.9"
+
+[dev-dependencies]
+tempfile = "3"
+

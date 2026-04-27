@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Arasul support — common questions about installing, using, and recovering the portable AI workspace.">
+  <meta name="theme-color" content="#0E0F11">
+  <title>Arasul — Support</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:title" content="Arasul — Support">
+  <meta property="og:description" content="FAQ for the portable AI workspace on a USB-C SSD.">
+  <meta property="og:image" content="https://arasul.dev/og-image.png">
+  <meta property="og:url" content="https://arasul.dev/support.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://arasul.dev/support.html">
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Regular.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Medium.woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    details {
+      border-bottom: 1px solid var(--border);
+      padding: 20px 0;
+    }
+    details summary {
+      cursor: pointer;
+      font-size: 18px;
+      font-weight: 500;
+      color: var(--text);
+      outline: none;
+      list-style: none;
+    }
+    details summary::before { content: "+ "; color: var(--accent); }
+    details[open] summary::before { content: "− "; }
+    details[open] summary { margin-bottom: 12px; }
+    details p, details ul { color: var(--text-muted); margin: 8px 0; }
+  </style>
+</head>
+<body>
+
+<header class="hero" style="padding-bottom: 40px;">
+  <nav class="nav">
+    <a class="brand" href="index.html">Arasul</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="privacy.html">Privacy</a>
+      <a href="https://github.com/arasul/arasul">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<main style="max-width: 720px; margin: 0 auto; padding: 48px 32px 96px;">
+  <h1 style="font-size: 40px; font-weight: 600; margin: 0 0 8px;">Support</h1>
+  <p style="color: var(--text-muted); font-size: 18px; margin: 0 0 32px;">
+    Short path: <a href="mailto:support@arasul.dev">support@arasul.dev</a>. Average first-response time during the beta: under 12 hours. Below: common questions, answered.
+  </p>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">Installing</h2>
+
+  <details>
+    <summary>I plugged in the drive and nothing happened.</summary>
+    <p>
+      Auto-launch only works after you've enabled it on this specific computer (Settings → Auto-launch).
+      On a fresh computer, open the drive in Finder/Explorer/Files and double-click the Arasul app/executable.
+    </p>
+  </details>
+
+  <details>
+    <summary>macOS says "Arasul cannot be opened because the developer cannot be verified."</summary>
+    <p>
+      Until the Developer ID signing pipeline is fully rolled out (Phase 5.1), you may need to right-click
+      the app, choose Open, and confirm. After the v1.0 public release, signing is automatic.
+    </p>
+  </details>
+
+  <details>
+    <summary>Windows SmartScreen flags the installer.</summary>
+    <p>
+      Same as macOS — we're waiting on an EV code-signing cert (2-3 week lead time). Until then click
+      "More info → Run anyway." You can verify the SHA-256 against
+      <a href="https://arasul.dev/releases/feed.json">feed.json</a>.
+    </p>
+  </details>
+
+  <details>
+    <summary>Which USB-C SSD should I use?</summary>
+    <p>
+      Any modern USB-C SSD works. We test Samsung T7 Shield, SanDisk Extreme Pro, and Crucial X9 Pro.
+      Size: 256 GB is plenty for notes + projects + Claude binaries. 1 TB is comfortable.
+    </p>
+  </details>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">Using</h2>
+
+  <details>
+    <summary>I forgot my passphrase.</summary>
+    <p>
+      The vault cannot be recovered without it — that's the design. Delete <code>.boot/vault.enc</code>
+      and <code>.boot/kdf.salt</code> from the drive; Arasul will treat it as a fresh install and walk
+      you through onboarding again. Your files in <code>content/</code> are not affected.
+    </p>
+  </details>
+
+  <details>
+    <summary>How do I back up the drive?</summary>
+    <p>
+      Copy the whole drive to any backup target (Time Machine, rsync, cloud backup) — the vault is
+      encrypted, so cloud backups don't leak credentials. Restoring: copy back, re-plug, unlock normally.
+    </p>
+  </details>
+
+  <details>
+    <summary>Can I use Arasul without Claude?</summary>
+    <p>
+      Yes. The editor, tree, and file management work without ever connecting Claude. Skip the Claude
+      login step during onboarding and Arasul is a (nicely integrated) portable markdown editor.
+    </p>
+  </details>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">Bugs + security</h2>
+
+  <details>
+    <summary>I found a bug.</summary>
+    <p>
+      Open an issue at <a href="https://github.com/arasul/arasul/issues">github.com/arasul/arasul</a>.
+      If you're in the beta, post in Discord <code>#bug-reports</code> — we triage daily. Urgent: email
+      <a href="mailto:support@arasul.dev">support@arasul.dev</a>.
+    </p>
+  </details>
+
+  <details>
+    <summary>I found a security issue.</summary>
+    <p>
+      Email <a href="mailto:security@arasul.dev">security@arasul.dev</a> directly — please don't open
+      a public issue. We acknowledge within 24 hours and ship a fix within 7 days for critical issues.
+      We're happy to credit you in the release notes if you'd like.
+    </p>
+  </details>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">Refunds + returns (SKU A)</h2>
+  <details>
+    <summary>How do returns work on the preloaded SSD?</summary>
+    <p>
+      30-day no-questions refund, EU-wide, shipping at our cost. Keep the drive, we'll re-image it for the next batch.
+      Send a note to <a href="mailto:support@arasul.dev">support@arasul.dev</a>.
+    </p>
+  </details>
+</main>
+
+<footer class="foot">
+  <span>Arasul · unit-ix · Made in Germany</span>
+  <span><a href="index.html">Home</a> · <a href="https://github.com/arasul/arasul">GitHub</a></span>
+</footer>
+
+</body>
+</html>

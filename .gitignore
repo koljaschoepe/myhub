@@ -52,6 +52,8 @@ tooling/*.tar.gz
 !tooling/install-go.sh
 !tooling/install-python.sh
 !tooling/install-uv.sh
+!tooling/install-rust.sh
+!tooling/activate-rust.sh
 
 # --- SSD-portable Python runtime (bootstrapped by install-python.sh) ---
 runtime/
@@ -81,6 +83,18 @@ myhub-cli/dist/
 *.out
 coverage.out
 
+# --- Tauri / arasul-app build artifacts ---
+arasul-app/node_modules/
+arasul-app/dist/
+arasul-app/src-tauri/target/
+arasul-app/src-tauri/gen/
+arasul-app/pnpm-lock.yaml.bak
+!arasul-app/README.md
+
+# --- Boot vault (encrypted, but regenerable per-user) ---
+.boot/vault.enc
+.boot/kdf.salt
+
 # --- Placeholder assets not yet chosen ---
 .boot/assets/*.aiff
 .boot/assets/*.icns
@@ -102,3 +116,22 @@ coverage.out
 .claude/backups/
 .claude/telemetry/
 .claude/.claude.json
+.claude/cache/
+.claude/file-history/
+.claude/history.jsonl
+.claude/mcp-needs-auth-cache.json
+.claude/output-styles/
+.claude/plugins/
+.claude/policy-limits.json
+.claude/projects/
+.claude/scheduled_tasks.lock
+.claude/session-env/
+.claude/sessions/
+.claude/shell-snapshots/
+
+# --- Build/run artifacts (top-level memory caches, OS noise) ---
+memory/sessions/
+content/memory/
+
+# --- Embedded sub-repos (managed separately, do NOT add as submodule) ---
+content/projects/koljaschoepe-scientific-writing/

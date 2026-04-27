@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Arasul privacy — what stays on the drive, what we collect (almost nothing), what happens if you lose it.">
+  <meta name="theme-color" content="#0E0F11">
+  <title>Arasul — Privacy</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:title" content="Arasul — Privacy">
+  <meta property="og:description" content="Privacy by physics, not policy. Your notes and credentials live on the drive, encrypted by your passphrase.">
+  <meta property="og:image" content="https://arasul.dev/og-image.png">
+  <meta property="og:url" content="https://arasul.dev/privacy.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://arasul.dev/privacy.html">
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Regular.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Medium.woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero" style="padding-bottom: 40px;">
+  <nav class="nav">
+    <a class="brand" href="index.html">Arasul</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="support.html">Support</a>
+      <a href="https://github.com/arasul/arasul">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<main style="max-width: 720px; margin: 0 auto; padding: 48px 32px 96px;">
+  <h1 style="font-size: 40px; font-weight: 600; margin: 0 0 8px;">Privacy</h1>
+  <p style="color: var(--text-muted); font-size: 18px; margin: 0 0 48px;">
+    Short version: Arasul doesn't have our servers in the loop. Long version follows.
+  </p>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">What stays on the drive</h2>
+  <p>Everything that matters:</p>
+  <ul>
+    <li>Your notes and project files — in <code>content/</code>, readable plaintext.</li>
+    <li>Your Claude OAuth token — in <code>.boot/vault.enc</code>, Argon2id + XChaCha20-Poly1305 encrypted with your passphrase.</li>
+    <li>Your chat history with Claude — in <code>content/communication/</code> on the drive, never in our cloud.</li>
+    <li>Your project registry, configuration, memory — in <code>memory/</code>, readable plaintext.</li>
+  </ul>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">What we collect</h2>
+  <p>
+    By default: <strong>nothing.</strong> Arasul makes no network calls unless you:
+  </p>
+  <ul>
+    <li>Click "Sign in with Anthropic" — your browser talks to anthropic.com, we're not in the loop.</li>
+    <li>Ask Claude a question — your message goes to anthropic.com directly from the drive; their privacy policy applies.</li>
+    <li>Check for updates — our updater hits <code>arasul.dev/releases/feed.json</code> with no identifying info.</li>
+  </ul>
+  <p>
+    You can optionally enable telemetry in Settings → Security. Off by default. What's in the payload:
+    app version, OS, a random installation ID, event names (like "app_launch", "vault_unlock"), and duration-relative timestamps.
+    <strong>Never: file contents, file names, chat messages, passphrases, wall-clock time, your identity.</strong>
+  </p>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">What happens when you eject</h2>
+  <p>
+    The host computer forgets. No residue in temp directories (we clear per-session tmpdirs on eject),
+    no cached tokens (they live in the vault, which is re-locked on eject), no history entries in the user's shell.
+  </p>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">What happens if you lose the drive</h2>
+  <p>
+    Whoever finds it sees <code>vault.enc</code> — an opaque encrypted blob. Without your passphrase, extracting
+    the Claude token requires brute-forcing Argon2id, which is designed to be too expensive to do at scale.
+    Your notes and projects remain readable to anyone who has the drive — if you store sensitive
+    material outside the vault, consider encrypting those individual files too.
+  </p>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">What about the beta signup?</h2>
+  <p>
+    The form on <a href="signup.html">signup.html</a> doesn't POST anywhere — it composes a mailto: link
+    that opens your email client with a pre-filled message to <code>hello@arasul.dev</code>. Your email
+    lands in our normal inbox, which is also the only place it's stored. We reply once, then archive the
+    thread. Ask us to forget and the thread gets deleted. No database, no CRM.
+  </p>
+
+  <h2 style="font-size: 22px; margin: 32px 0 12px;">Legal</h2>
+  <p style="color: var(--text-muted); font-size: 14px;">
+    Data controller: unit-ix (Kolja Schöpe), Berlin, Germany.
+    Contact: <a href="mailto:privacy@arasul.dev">privacy@arasul.dev</a>.
+    GDPR applies. This page is the canonical statement; if it changes we log the diff in Git at
+    <a href="https://github.com/arasul/arasul/commits/main/landing/privacy.html">our repo</a>.
+  </p>
+</main>
+
+<footer class="foot">
+  <span>Arasul · unit-ix · Made in Germany</span>
+  <span><a href="index.html">Home</a> · <a href="https://github.com/arasul/arasul">GitHub</a></span>
+</footer>
+
+</body>
+</html>

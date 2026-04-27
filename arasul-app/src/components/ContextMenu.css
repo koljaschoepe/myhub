@@ -1,0 +1,46 @@
+.arasul-ctxmenu {
+  position: fixed;
+  z-index: 1200;
+  min-width: 200px;
+  padding: 4px;
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  animation: ctxmenu-in 100ms ease-out;
+}
+
+@keyframes ctxmenu-in {
+  from { opacity: 0; transform: translateY(-2px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.arasul-ctxmenu-item {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  width: 100%;
+  text-align: left;
+  padding: 6px var(--sp-3);
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+
+.arasul-ctxmenu-item:hover { background: var(--accent-soft); color: var(--accent); }
+.arasul-ctxmenu-item.destructive { color: var(--danger); }
+.arasul-ctxmenu-item.destructive:hover { background: rgba(229, 92, 92, 0.1); color: var(--danger); }
+
+.arasul-ctxmenu-icon {
+  display: inline-flex;
+  align-items: center;
+  color: inherit;
+  opacity: 0.7;
+}
+
+.arasul-ctxmenu-sep {
+  height: 1px;
+  background: var(--border-subtle);
+  margin: 4px 0;
+}

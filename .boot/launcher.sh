@@ -13,17 +13,39 @@ export CLAUDE_CODE_PLUGIN_CACHE_DIR="$MYHUB/.claude/plugins"
 export MYHUB_ROOT="$MYHUB"
 
 # Prepend SSD-local tools to PATH. Order: bin (compiled binaries) first, then
-# Go toolchain (build-time). Everything lives on the SSD — zero host deps.
-export PATH="$MYHUB/bin:$MYHUB/tooling/go/bin:$PATH"
+# Go toolchain (build-time), then the user's local install dir (where the
+# official `claude` installer drops the binary). Everything else lives on the
+# SSD — zero host deps. ~/.local/bin is added because Phase 4 of the master
+# plan replaced bundled `bin/claude` with on-demand installation via Anthropic's
+# official curl-installer; that installer writes to ~/.local/bin.
+export PATH="$MYHUB/bin:$MYHUB/tooling/go/bin:$HOME/.local/bin:$PATH"
 
 TUI="$MYHUB/bin/myhub-tui"
 PYTHON_RUNTIME="$MYHUB/runtime/python/bin/python3"
 
+# resolve_claude — find the official `claude` CLI on PATH (or in standard
+# install locations the official installer uses). We never bundle the binary;
+# it's proprietary ("All rights reserved") and would be a license violation
+# to redistribute.
+resolve_claude() {
+    if command -v claude >/dev/null 2>&1; then
+        command -v claude
+        return 0
+    fi
+    for candidate in "$HOME/.local/bin/claude" /usr/local/bin/claude /opt/homebrew/bin/claude; do
+        if [[ -x "$candidate" ]]; then
+            echo "$candidate"
+            return 0
+        fi
+    done
+    return 1
+}
+
 # fallback_to_claude is the safety net: whenever the TUI can't run (missing,
-# broken, Python runtime absent, or crashing repeatedly), we still give the
-# user a usable session by exec'ing Claude Code directly in content/. Never
-# leave them stranded on a blank terminal — the cost of a bad TUI must not
-# be the loss of the entire session.
+# broken, Python runtime absent, or crashing repeatedly), we still try to give
+# the user a usable session by exec'ing Claude Code directly in content/.
+# If `claude` isn't installed either, we print install instructions and exit
+# rather than leaving the user on a blank terminal.
 fallback_to_claude() {
     local reason="$1"
     echo "" >&2
@@ -33,10 +55,22 @@ fallback_to_claude() {
     echo "         bash \"$MYHUB/tooling/install-uv.sh\"" >&2
     echo "         $MYHUB/bin/uv pip install --python \"$PYTHON_RUNTIME\" rich prompt-toolkit psutil PyYAML" >&2
     echo "" >&2
-    echo "       Falling back to direct Claude Code session." >&2
-    echo "" >&2
-    cd "$MYHUB/content"
-    exec "$MYHUB/bin/claude" "$@"
+    if claude_bin="$(resolve_claude)"; then
+        echo "       Falling back to direct Claude Code session ($claude_bin)." >&2
+        echo "" >&2
+        cd "$MYHUB/content"
+        exec "$claude_bin" "$@"
+    else
+        echo "       Claude Code is not installed on this machine." >&2
+        echo "       Install it once with Anthropic's official installer:" >&2
+        echo "" >&2
+        echo "         curl -fsSL https://claude.ai/install.sh | bash    # macOS / Linux / WSL" >&2
+        echo "         irm https://claude.ai/install.ps1 | iex            # Windows PowerShell" >&2
+        echo "" >&2
+        echo "       Then plug the drive in again. (The Arasul GUI does this for you" >&2
+        echo "       inside the Onboarding wizard — no terminal needed.)" >&2
+        exit 1
+    fi
 }
 
 if [[ ! -x "$TUI" ]]; then

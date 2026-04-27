@@ -6,20 +6,11 @@ launcher.sh re-spawn loop brings the TUI back after claude exits.
 from __future__ import annotations
 
 import os
-import shutil
 from pathlib import Path
 
+from myhub_tui.core.bin_resolve import resolve_claude
 from myhub_tui.core.state import TuiState
 from myhub_tui.core.types import CommandResult
-
-
-def _resolve_claude(root: Path) -> str | None:
-    """Prefer the SSD-bundled bin/claude; fall back to $PATH."""
-    ssd_bin = root / "bin" / "claude"
-    if ssd_bin.is_file() and os.access(ssd_bin, os.X_OK):
-        return str(ssd_bin)
-    path_bin = shutil.which("claude")
-    return path_bin
 
 
 def _write_respawn_marker(root: Path) -> None:
@@ -37,7 +28,7 @@ def cmd_claude(state: TuiState, _: list[str]) -> CommandResult:
             style="error",
         )
 
-    claude_bin = _resolve_claude(state.root)
+    claude_bin = resolve_claude(state.root)
     if not claude_bin:
         return CommandResult(
             ok=False,

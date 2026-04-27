@@ -1,0 +1,94 @@
+.arasul-statusbar {
+  height: 24px;
+  flex: 0 0 24px;
+  padding: 0 var(--pane-pad-x);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  border-top: var(--border);
+  background: var(--bg-pane);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  user-select: none;
+  font-variant-numeric: tabular-nums;
+}
+
+.arasul-keyhint {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: inherit;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-keyhint:hover {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+.arasul-keyhint kbd {
+  font-family: var(--font-mono);
+  color: var(--text-secondary);
+  background: transparent;
+  padding: 0;
+  border: 0;
+}
+
+/* Generic clickable status item (vault, project, etc.). Same hover-feel
+   as keyhints. Disabled when the action isn't applicable in the current
+   state (e.g. vault locked → can't lock again). */
+.arasul-status-clickable {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 4px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-status-clickable:hover:not(:disabled) {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+.arasul-status-clickable:disabled {
+  cursor: default;
+  opacity: 0.7;
+}
+
+.arasul-status-right {
+  margin-left: auto;
+  font-family: var(--font-mono);
+  color: var(--text-tertiary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  display: flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.arasul-status-git {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  color: var(--text-secondary);
+}
+.arasul-status-git svg { opacity: 0.8; }
+.arasul-status-git > span { display: inline-flex; align-items: center; gap: 2px; }
+
+.arasul-status-sep { color: var(--border-strong); padding: 0 4px; }
+
+/* C4 — on narrow viewports keyhints disappear; only the right-side
+   status (vault / project / drive) remains. */
+@media (max-width: 900px) {
+  .arasul-keyhint { display: none; }
+}

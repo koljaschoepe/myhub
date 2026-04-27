@@ -1,0 +1,141 @@
+name: release-arasul
+
+# Build Arasul bundles for every OS, attach them to a GitHub Release with
+# a SHA256SUMS block in the body. No code signing, no CDN upload, no
+# external accounts beyond GitHub. Users see an "unidentified developer"
+# prompt on first launch and bypass it once per machine.
+
+on:
+  push:
+    tags:
+      - "arasul-v*.*.*"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: release-arasul-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  build:
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            label: macos-arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            label: macos-x64
+          - os: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+            label: linux-x64
+          - os: windows-latest
+            target: x86_64-pc-windows-msvc
+            label: windows-x64
+    runs-on: ${{ matrix.os }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: pnpm/action-setup@v4
+        with: { version: 10 }
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: pnpm
+          cache-dependency-path: arasul-app/pnpm-lock.yaml
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: ${{ matrix.target }}
+
+      - name: Linux deps
+        if: matrix.os == 'ubuntu-latest'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev build-essential curl \
+            wget file libxdo-dev libssl-dev libayatana-appindicator3-dev \
+            librsvg2-dev fuse libfuse2
+
+      - name: Frontend install
+        working-directory: arasul-app
+        run: pnpm install --frozen-lockfile
+
+      - name: Tauri build (unsigned)
+        working-directory: arasul-app
+        run: pnpm tauri build --target ${{ matrix.target }}
+
+      - name: Collect + rename artifact
+        shell: bash
+        run: |
+          set -e
+          VERSION="${GITHUB_REF#refs/tags/arasul-v}"
+          SRC=$(find arasul-app/src-tauri/target/${{ matrix.target }}/release/bundle -type f \
+            \( -name "*.dmg" -o -name "*.AppImage" -o -name "*.msi" \) | head -n 1)
+          EXT="${SRC##*.}"
+          DST="arasul-${VERSION}-${{ matrix.label }}.${EXT}"
+          mkdir -p out
+          cp "$SRC" "out/$DST"
+          (cd out && shasum -a 256 "$DST" > "$DST.sha256" || sha256sum "$DST" > "$DST.sha256")
+          echo "ARTIFACT_PATH=out/$DST" >> "$GITHUB_ENV"
+          echo "ARTIFACT_SHA=out/$DST.sha256" >> "$GITHUB_ENV"
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: arasul-${{ matrix.label }}
+          path: |
+            ${{ env.ARTIFACT_PATH }}
+            ${{ env.ARTIFACT_SHA }}
+          if-no-files-found: error
+
+  publish:
+    needs: build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+        with: { path: dist }
+
+      - name: Build release body with SHA256SUMS
+        shell: bash
+        run: |
+          set -e
+          VERSION="${GITHUB_REF#refs/tags/arasul-v}"
+          {
+            echo "# Arasul $VERSION"
+            echo
+            echo "## How to install"
+            echo "macOS:   download the .dmg, open, drag Arasul into Applications."
+            echo "         First launch: right-click the app, choose Open, confirm once."
+            echo "Windows: download the .msi, run. SmartScreen → More info → Run anyway."
+            echo "Linux:   download the .AppImage, \`chmod +x\`, double-click."
+            echo
+            echo "## Verify download"
+            echo '```'
+            echo "SHA256SUMS"
+            for f in $(find dist -type f -name '*.dmg' -o -name '*.AppImage' -o -name '*.msi' | sort); do
+              name=$(basename "$f")
+              sha=$(sha256sum "$f" | awk '{print $1}')
+              echo "$sha  $name"
+            done
+            echo '```'
+          } > RELEASE_BODY.md
+          cat RELEASE_BODY.md
+
+      - name: Create GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -e
+          VERSION="${GITHUB_REF#refs/tags/arasul-v}"
+          ASSETS=()
+          for f in $(find dist -type f \( -name '*.dmg' -o -name '*.AppImage' -o -name '*.msi' \)); do
+            ASSETS+=("$f")
+          done
+          gh release create "arasul-v$VERSION" \
+            --title "Arasul $VERSION" \
+            --notes-file RELEASE_BODY.md \
+            "${ASSETS[@]}"

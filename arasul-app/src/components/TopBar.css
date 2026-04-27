@@ -1,0 +1,158 @@
+.arasul-topbar {
+  height: 40px;
+  flex: 0 0 40px;
+  padding: 0 var(--pane-pad-x);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-4);
+  border-bottom: var(--border);
+  background: var(--bg-pane);
+  font-size: var(--fs-body);
+  color: var(--text-secondary);
+  user-select: none;
+}
+
+.arasul-brand {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+/* Generic small icon-only button for the topbar. Matches the visual
+   weight of git controls without competing with the Push button. */
+.arasul-topbar-iconbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-topbar-iconbtn:hover {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+
+.arasul-briefer {
+  flex: 1;
+  font-style: italic;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.arasul-update-pill {
+  font-size: var(--fs-xs);
+  padding: 2px 10px;
+  border-radius: 10px;
+  border: 1px solid var(--accent-soft);
+  color: var(--text-secondary);
+  font-weight: var(--fw-regular);
+  letter-spacing: 0.02em;
+}
+.arasul-update-pill:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Update pill — Phase E. Subtle, soft-accent fill, only renders when an
+   update is queued. Click → Settings → Updates. */
+.arasul-update-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  margin-left: var(--sp-3);
+  padding: 2px 10px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-update-pill:hover {
+  background: var(--accent);
+  color: var(--text-on-accent);
+}
+
+/* ============================================================
+   Git controls — Phase 2 (locked decision 2026-04-26)
+   Status pill · branch label · one-click Push button.
+   ============================================================ */
+
+/* Status pill: shows working-tree state at a glance.
+   Clean (green) · dirty (subtle warn) · ahead-only (accent) · behind (red). */
+.arasul-git-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 2px 10px;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+  user-select: none;
+}
+.arasul-git-pill-clean {
+  background: color-mix(in srgb, var(--success) 14%, transparent);
+  color: var(--success);
+}
+.arasul-git-pill-dirty {
+  background: color-mix(in srgb, var(--warning) 16%, transparent);
+  color: var(--warning);
+}
+.arasul-git-pill-ahead {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.arasul-git-pill-behind {
+  background: color-mix(in srgb, var(--danger) 16%, transparent);
+  color: var(--danger);
+}
+
+.arasul-git-branch {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  padding: 0 6px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  white-space: nowrap;
+  user-select: none;
+}
+
+/* Push button: primary action, but compact so it doesn't dominate the bar.
+   Slight spinner state via opacity + cursor when pushing. */
+.arasul-push-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 4px 12px;
+  border-radius: var(--radius-sm);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  letter-spacing: 0.01em;
+  transition: background var(--motion-fast), opacity var(--motion-fast);
+}
+.arasul-push-btn:hover:not(:disabled) {
+  background: var(--accent-strong);
+}
+.arasul-push-btn:disabled {
+  opacity: 0.6;
+  cursor: progress;
+}
+.arasul-push-btn.pushing {
+  animation: push-pulse 900ms ease-in-out infinite;
+}
+@keyframes push-pulse {
+  0%, 100% { opacity: 0.7; }
+  50%      { opacity: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .arasul-push-btn.pushing { animation: none; }
+}

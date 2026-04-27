@@ -48,14 +48,17 @@ read -r -p "Continue? [y/N] " confirm
 # --- 1. Install host-side wrapper + LaunchAgent ---
 # macOS 14+ denies launchd-spawned shells access to external volumes
 # (Operation not permitted, including `ls`). Workaround: launchd runs a
-# tiny wrapper living on the host ($HOME), which delegates to Terminal.app.
+# tiny wrapper living on the host ($HOME), which delegates work onto the
+# SSD via paths the wrapper itself constructs.
 #
-# We use `open -a Terminal "$SSD/.boot/on-mount.command"` — the .command
-# suffix is load-bearing: macOS treats these as Terminal-executable
-# scripts, runs them in exactly ONE new window, and Terminal's TCC scope
-# covers the SSD. osascript's `tell Terminal ... do script` opens a
-# SECOND default window whenever Terminal wasn't already running — we
-# used to ship that, it caused the "zwei Terminals" bug.
+# Hero-moment design (Phase B): on mount, the Tauri app opens directly.
+# The TUI no longer auto-launches — it remains available as the right-pane
+# inside the Tauri window. The wrapper:
+#   1. fires on-mount.sh in the background (sound + notification +
+#      preflight); its output is captured to /tmp logs, never blocks UI.
+#   2. exec's `open -b de.unit-ix.arasul` to focus or launch Arasul.app
+#      via Launch Services (works regardless of where the .app lives).
+ARASUL_BUNDLE_ID="de.unit-ix.arasul"
 WRAPPER_DST="$HOME/.myhub-mount-wrapper.sh"
 cat > "$WRAPPER_DST" <<WRAPPER
 #!/bin/bash
@@ -63,16 +66,14 @@ cat > "$WRAPPER_DST" <<WRAPPER
 set -euo pipefail
 SSD="$MYHUB"
 [[ -d "\$SSD" ]] || exit 0
-exec /usr/bin/open -a Terminal "\$SSD/.boot/on-mount.command"
+# Side-effects (sound, notification, preflight) run detached — never block
+# the GUI from appearing.
+"\$SSD/.boot/on-mount.sh" >/tmp/myhub-mount-stdout.log 2>/tmp/myhub-mount-stderr.log &
+disown || true
+# Hand off to the Tauri app via Launch Services bundle id.
+exec /usr/bin/open -b $ARASUL_BUNDLE_ID
 WRAPPER
 chmod +x "$WRAPPER_DST"
-
-# .command file is what Terminal.app actually opens. We ship a symlink
-# to on-mount.sh (in-repo file, chmod +x) so the content stays tracked
-# in git while Terminal sees the .command suffix it requires.
-if [[ ! -e "$MYHUB/.boot/on-mount.command" ]]; then
-    ln -s on-mount.sh "$MYHUB/.boot/on-mount.command"
-fi
 
 mkdir -p "$(dirname "$PLIST_DST")"
 # plist.template still uses __MYHUB_PATH__ for `on-mount.sh` — we rewrite it
@@ -106,13 +107,22 @@ PY
 fi
 
 # --- 3. Simulate a first mount ---
-# on-mount.sh now exec-chains into launcher.sh → myhub-tui, so it does not
-# return. Print the success notice BEFORE handing off; the TUI itself will
-# take over this terminal from here.
+# on-mount.sh now does only side-effects (sound, notification, preflight)
+# and returns. The GUI is opened explicitly by the wrapper or — here — by
+# this script. Both call paths converge on `open -b $ARASUL_BUNDLE_ID`.
 echo
 echo "✓ myhub installed. Future mounts of '$VOL_LABEL' will trigger automatically."
 echo "  To remove: $MYHUB/.boot/uninstall.command"
 echo
-echo "Starting myhub (first-mount simulation)..."
+echo "Starting Arasul (first-mount simulation)..."
 sleep 1
-exec "$MYHUB/.boot/on-mount.sh"
+"$MYHUB/.boot/on-mount.sh" >/tmp/myhub-mount-stdout.log 2>/tmp/myhub-mount-stderr.log &
+disown || true
+# Best-effort: if the .app is registered with Launch Services, this
+# launches/focuses it. If it isn't yet (pre-build), the user can run the
+# app manually — the next real SSD mount will retry via the wrapper.
+if ! /usr/bin/open -b "$ARASUL_BUNDLE_ID" 2>/dev/null; then
+    echo "  (Arasul.app isn't installed yet on this Mac — build it once with"
+    echo "   'pnpm tauri build' inside arasul-app/, drag to /Applications, then"
+    echo "   replug the SSD. Future mounts will auto-launch the app.)"
+fi

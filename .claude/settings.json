@@ -34,6 +34,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "${CLAUDE_CONFIG_DIR}/hooks/block-api-imports.sh"
+          }
+        ]
+      }
     ]
   }
 }

@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Arasul — a portable AI workspace that lives on a USB-C SSD. Plug in, sign in, work. Eject and everything goes with you.">
+  <meta name="theme-color" content="#0E0F11">
+  <title>Arasul — portable AI workspace on a drive</title>
+
+  <!-- Icons -->
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+
+  <!-- Open Graph + Twitter card -->
+  <meta property="og:type" content="website">
+  <meta property="og:title" content="Arasul — portable AI workspace on a drive">
+  <meta property="og:description" content="Plug a USB-C SSD into any computer. Your notes, projects, and AI login live on the drive, encrypted by a passphrase only you know.">
+  <meta property="og:image" content="https://arasul.dev/og-image.png">
+  <meta property="og:url" content="https://arasul.dev/">
+  <meta property="og:site_name" content="Arasul">
+  <meta name="twitter:card" content="summary_large_image">
+  <meta name="twitter:title" content="Arasul — portable AI workspace on a drive">
+  <meta name="twitter:description" content="Plug a USB-C SSD into any computer. Encrypted by a passphrase only you know.">
+  <meta name="twitter:image" content="https://arasul.dev/og-image.png">
+
+  <link rel="canonical" href="https://arasul.dev/">
+
+  <!-- Geist font: preload + face declaration. The .woff2 files are
+       expected at /fonts/Geist-{Regular,Medium,Semibold}.woff2 — drop
+       the actual binaries from vercel.com/font into landing/fonts/. -->
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Regular.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Medium.woff2" crossorigin>
+
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<header class="hero">
+  <nav class="nav">
+    <span class="brand">Arasul</span>
+    <div class="nav-links">
+      <a href="#how">How it works</a>
+      <a href="#download">Download</a>
+      <a href="signup.html">Beta signup</a>
+      <a href="https://github.com/arasul/arasul">GitHub</a>
+    </div>
+  </nav>
+
+  <div class="hero-body">
+    <h1>Your AI workspace, on a drive you carry.</h1>
+    <p class="lede">
+      Plug a small USB-C SSD into any Mac, Windows, or Linux computer.
+      Your notes, your projects, your AI login — all of it lives on the
+      drive, encrypted with a passphrase only you know.
+    </p>
+    <p class="lede">
+      When you eject, the computer forgets. When you plug in again, on
+      any machine, everything is exactly where you left it.
+    </p>
+    <div class="cta-row">
+      <a class="cta primary" href="signup.html">Join the private beta</a>
+      <a class="cta ghost" href="#how">How it works →</a>
+    </div>
+  </div>
+</header>
+
+<section id="how" class="section">
+  <div class="section-inner">
+    <h2>How it works</h2>
+    <div class="steps">
+      <div class="step">
+        <div class="step-n">1</div>
+        <h3>Plug in</h3>
+        <p>Pop the Arasul SSD into any modern computer's USB-C port. The app opens automatically once it's set up.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">2</div>
+        <h3>Unlock</h3>
+        <p>Type your passphrase. The drive decrypts your Anthropic login and your AI remembers who you are and what you're working on.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">3</div>
+        <h3>Work</h3>
+        <p>Notes. Projects. Chat with Claude, grounded in your own files. A real terminal for when you need one.</p>
+      </div>
+      <div class="step">
+        <div class="step-n">4</div>
+        <h3>Eject</h3>
+        <p>Pop out the drive and everything goes with you. The host computer keeps no trace. Plug into a friend's laptop and you're home.</p>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section alt">
+  <div class="section-inner">
+    <h2>Built for privacy by physics, not policy.</h2>
+    <p>
+      Most "private" tools ask you to trust their cloud. Arasul doesn't have one.
+      Your files live on a drive. Your passphrase never leaves the drive.
+      Your AI conversations stay with you.
+    </p>
+    <ul class="bullets">
+      <li>Argon2id passphrase-derived key · XChaCha20-Poly1305 AEAD</li>
+      <li>Cross-platform: macOS, Windows, Linux</li>
+      <li>No account, no cloud sync, no telemetry by default</li>
+      <li>Open source (MIT) · audit the vault yourself</li>
+    </ul>
+  </div>
+</section>
+
+<section id="download" class="section">
+  <div class="section-inner">
+    <h2>Two ways to get started</h2>
+    <div class="sku-grid">
+      <div class="sku">
+        <h3>SKU B · Bring your own drive</h3>
+        <p>Download the installer, run it once, plug in any USB-C SSD you have. 10 minutes from click to working AI workspace.</p>
+        <p class="sku-status">Private beta · request access below</p>
+        <a href="signup.html" class="cta primary">Request beta access</a>
+      </div>
+      <div class="sku">
+        <h3>SKU A · Preloaded SSD</h3>
+        <p>We ship you a drive with Arasul already installed, in a quiet sleeve. Plug in, enter a passphrase, you're done.</p>
+        <p class="sku-status">Launching after public release</p>
+        <a href="signup.html?interest=sku-a" class="cta ghost">Get notified</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<footer class="foot">
+  <span>Arasul · unit-ix · Made in Germany</span>
+  <span><a href="https://github.com/arasul/arasul">GitHub</a> · <a href="/privacy.html">Privacy</a> · <a href="/support.html">Support</a></span>
+</footer>
+
+</body>
+</html>

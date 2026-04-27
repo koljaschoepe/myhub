@@ -1,0 +1,138 @@
+.arasul-onboarding {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--bg-canvas);
+}
+
+.arasul-onboarding-card {
+  width: min(420px, 92vw);
+  max-height: 90vh;
+  overflow-y: auto;
+  padding: var(--sp-8);
+  background: var(--bg-pane);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+@media (max-width: 480px) {
+  .arasul-onboarding-card { padding: var(--sp-6); }
+  .arasul-brand-hero { font-size: 36px; }
+}
+
+.arasul-onboarding-card h2 {
+  margin: 0 0 var(--sp-2);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.arasul-onboarding-card p { margin: 0 0 var(--sp-2); color: var(--text-secondary); font-size: var(--fs-md); line-height: var(--lh-body); }
+.arasul-onboarding-card input[type=text],
+.arasul-onboarding-card input[type=password] {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-md);
+}
+
+.arasul-brand-hero {
+  font-size: 48px;
+  font-weight: var(--fw-semibold);
+  text-align: center;
+  margin-bottom: var(--sp-2);
+  letter-spacing: 0.02em;
+}
+
+.arasul-muted { color: var(--text-tertiary); font-size: var(--fs-sm); }
+.arasul-error { color: var(--danger); font-size: var(--fs-sm); }
+
+.arasul-actions { display: flex; gap: var(--sp-2); margin-top: var(--sp-2); }
+
+.arasul-btn {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+  width: 100%;
+  font-size: var(--fs-md);
+}
+
+.arasul-btn.primary { background: var(--accent); color: var(--text-on-accent); }
+.arasul-btn.primary:hover:not(:disabled) { background: var(--accent-strong); }
+.arasul-btn.primary:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.arasul-btn.ghost { background: transparent; color: var(--text-secondary); border: var(--border); }
+.arasul-btn.ghost:hover { background: var(--hover); color: var(--text-primary); }
+
+.arasul-check { display: flex; align-items: center; gap: var(--sp-2); color: var(--text-primary); cursor: pointer; user-select: none; }
+.arasul-check input[type=checkbox] { margin: 0; width: auto; padding: 0; }
+
+.arasul-strength {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+
+.arasul-strength-bar {
+  height: 4px;
+  flex: 0 0 80px;
+  border-radius: 2px;
+  background: var(--border-subtle);
+  position: relative;
+  overflow: hidden;
+}
+
+.arasul-strength-bar.score-0::after { width: 10%; background: var(--danger); }
+.arasul-strength-bar.score-1::after { width: 25%; background: var(--danger); }
+.arasul-strength-bar.score-2::after { width: 50%; background: var(--warning); }
+.arasul-strength-bar.score-3::after { width: 75%; background: var(--success); }
+.arasul-strength-bar.score-4::after { width: 100%; background: var(--success); }
+
+.arasul-strength-bar::after {
+  content: "";
+  position: absolute;
+  left: 0; top: 0; bottom: 0;
+  background: var(--border-subtle);
+  transition: width var(--motion) ease-out;
+}
+
+/* Phase 4 — Connect Claude step */
+
+.arasul-claude-status {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--radius);
+  font-size: var(--fs-sm);
+  border: var(--border);
+}
+.arasul-claude-status--ok    { border-color: var(--success); color: var(--text-primary); }
+.arasul-claude-status--missing { border-color: var(--border-subtle); color: var(--text-secondary); }
+.arasul-claude-path { font-family: var(--font-mono, monospace); font-size: var(--fs-xs); margin-top: var(--sp-1); word-break: break-all; }
+
+.arasul-install-log {
+  margin: 0;
+  padding: var(--sp-3);
+  max-height: 200px;
+  overflow-y: auto;
+  background: var(--bg-canvas);
+  border: var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.arasul-onboarding-actions {
+  display: flex;
+  gap: var(--sp-2);
+  flex-direction: column;
+}

@@ -432,6 +432,11 @@ def print_header(state: TuiState, full: bool = True) -> None:
     else:
         _print_header_compact(state)
 
+    # The hint bar belongs to the dashboard, not the prompt loop. Rendering
+    # it here means it appears once per screen paint (initial banner, plus
+    # any `refresh_full=True` command result) — not once per keystroke.
+    render_hint_bar()
+
 
 # ---------------------------------------------------------------------------
 # prompt_toolkit HTML prompt

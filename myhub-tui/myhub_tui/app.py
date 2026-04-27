@@ -29,7 +29,7 @@ from myhub_tui.core.router import build_registry, run_command
 from myhub_tui.core.state import Screen, TuiState
 from myhub_tui.core.theme import DIM, PRIMARY, WARNING
 from myhub_tui.core.types import CommandResult, PendingHandler
-from myhub_tui.core.ui.dashboard import build_prompt, print_header, render_hint_bar
+from myhub_tui.core.ui.dashboard import build_prompt, print_header
 from myhub_tui.core.ui.output import (
     console,
     content_pad,
@@ -238,7 +238,9 @@ def run() -> int:
 
     while True:
         try:
-            render_hint_bar()
+            # Hint bar moved into print_header() — rendered once per screen
+            # paint, no longer once per prompt iteration. Keeps the visual
+            # tighter for power users.
             prompt_markup = build_prompt(state, wizard_step)
             raw = session.prompt(HTML(prompt_markup))
         except (EOFError, KeyboardInterrupt):

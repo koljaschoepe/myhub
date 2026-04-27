@@ -1,0 +1,249 @@
+.arasul-right {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+}
+
+.arasul-right-placeholder {
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-6);
+  text-align: center;
+  color: var(--text-tertiary);
+}
+
+.arasul-right-terminal { padding: 0; }
+
+/* ---------- Tab bar (VS Code style) ---------- */
+
+.arasul-term-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 30px;
+  flex: 0 0 30px;
+  padding: 0 6px;
+  border-bottom: var(--border);
+  background: var(--bg-pane);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  user-select: none;
+}
+.arasul-term-tabs::-webkit-scrollbar { display: none; }
+
+.arasul-term-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  transition: background var(--motion-fast), color var(--motion-fast);
+  flex-shrink: 0;
+  max-width: 200px;
+}
+.arasul-term-tab:hover { background: var(--hover); color: var(--text-secondary); }
+.arasul-term-tab.active {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.arasul-term-tab-label {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arasul-term-tab-sep {
+  color: var(--text-tertiary);
+  margin: 0 1px;
+}
+.arasul-term-tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-term-tab-close:hover { background: var(--hover); color: var(--text-primary); }
+
+.arasul-term-tab-new {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  flex-shrink: 0;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-term-tab-new:hover { background: var(--hover); color: var(--accent); }
+
+/* Stack hosts every terminal slot at once; only the active is visible.
+   Hidden ones stay mounted so xterm scrollback + PTY connection persist. */
+.arasul-term-stack {
+  position: relative;
+  flex: 1;
+  min-height: 0;
+}
+.arasul-term-slot {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+}
+.arasul-term-slot.hidden { visibility: hidden; pointer-events: none; }
+
+.arasul-term-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
+.arasul-term-empty-btn {
+  padding: 6px 14px;
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  border-radius: var(--radius);
+  transition: background var(--motion-fast);
+}
+.arasul-term-empty-btn:hover { background: var(--accent); color: var(--text-on-accent); }
+
+/* ---------- Per-terminal chrome (kept lightweight now that tabs label) ---------- */
+
+.arasul-myhub-term {
+  position: relative;     /* anchor for .arasul-term-search overlay */
+  display: flex;
+  flex-direction: column;
+  flex: 1 1 auto;
+  min-height: 0;
+  background: var(--bg-canvas);
+}
+
+.arasul-myhub-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  height: 22px;
+  padding: 0 var(--pane-pad-x);
+  font-size: var(--fs-xxs);
+  color: var(--text-tertiary);
+  border-bottom: var(--border);
+  background: var(--bg-pane);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+.arasul-myhub-head-label {
+  color: var(--text-secondary);
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  font-size: var(--fs-xxs);
+}
+.arasul-myhub-project {
+  text-transform: none;
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+}
+
+.arasul-myhub-status {
+  margin-left: auto;
+  font-variant-numeric: tabular-nums;
+  font-size: var(--fs-xxs);
+}
+.arasul-myhub-status-running  { color: var(--success); }
+.arasul-myhub-status-spawning { color: var(--text-tertiary); }
+.arasul-myhub-status-exited   { color: var(--text-tertiary); }
+.arasul-myhub-status-error    { color: var(--danger); }
+
+.arasul-myhub-restart {
+  margin-left: var(--sp-2);
+  font-size: var(--fs-xxs);
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  color: var(--accent);
+  background: var(--accent-soft);
+  transition: background var(--motion-fast);
+}
+.arasul-myhub-restart:hover { background: var(--accent); color: var(--text-on-accent); }
+
+.arasul-myhub-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  padding: 6px 8px;
+  box-sizing: border-box;
+}
+
+.arasul-myhub-error {
+  padding: var(--sp-2) var(--pane-pad-x);
+  background: var(--danger-soft);
+  color: var(--danger);
+  font-size: var(--fs-sm);
+  border-top: var(--border);
+}
+
+/* Terminal search overlay (Phase D — xterm SearchAddon). */
+.arasul-term-search {
+  position: absolute;
+  top: 38px;
+  right: var(--sp-3);
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: 4px 4px 4px var(--sp-2);
+  background: var(--bg-elevated);
+  border: var(--border);
+  border-radius: var(--radius);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.45);
+  z-index: 6;
+  animation: drop-in var(--motion-fast);
+}
+.arasul-term-search input {
+  width: 240px;
+  height: 24px;
+  padding: 0 var(--sp-2);
+  background: transparent;
+  border: 0;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  outline: none;
+}
+.arasul-term-search-close {
+  width: 22px;
+  height: 22px;
+  border-radius: var(--radius-sm);
+  color: var(--text-secondary);
+  font-size: 16px;
+  line-height: 1;
+}
+.arasul-term-search-close:hover { background: var(--hover); color: var(--text-primary); }
+
+/* Subtle xterm scrollbar — match app palette via CSS vars. */
+.arasul-myhub-body .xterm-screen,
+.arasul-myhub-body .xterm-viewport {
+  scrollbar-width: thin;
+  scrollbar-color: var(--border-subtle) transparent;
+}
+
+/* Symmetric padding inside the terminal body, replacing the audit's
+   asymmetric 6px 8px. Content no longer touches pane edges. */
+.arasul-myhub-body { padding: 8px; }

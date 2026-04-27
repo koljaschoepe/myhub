@@ -1,0 +1,131 @@
+.arasul-search-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.45);
+  display: flex;
+  align-items: flex-start;
+  justify-content: center;
+  padding: 80px 24px 24px;
+  z-index: 950;
+  animation: cmdk-fade var(--motion-fast) ease-out;
+}
+
+.arasul-search-panel {
+  width: min(720px, 100%);
+  max-height: 70vh;
+  background: var(--bg-pane);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  box-shadow: 0 16px 48px rgba(0,0,0,0.55);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+
+.arasul-search-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: 10px 14px;
+  border-bottom: var(--border);
+  color: var(--text-tertiary);
+}
+
+.arasul-search-input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+}
+
+.arasul-search-tog {
+  padding: 2px 8px;
+  font-size: 11px;
+  font-family: var(--font-mono);
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-search-tog:hover { background: var(--hover); color: var(--text-primary); }
+.arasul-search-tog.active { background: var(--accent-soft); color: var(--accent); }
+
+.arasul-search-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px; height: 24px;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+}
+.arasul-search-close:hover { background: var(--hover); color: var(--text-primary); }
+
+.arasul-search-meta {
+  padding: 6px 16px;
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  border-bottom: 1px solid var(--border-subtle);
+}
+
+.arasul-search-results {
+  flex: 1;
+  overflow-y: auto;
+  padding: 4px 0;
+}
+
+.arasul-search-group { padding: 4px 0; }
+
+.arasul-search-file {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-2);
+  padding: 6px 16px 4px;
+  font-size: var(--fs-xs);
+  color: var(--text-secondary);
+}
+.arasul-search-file-name {
+  font-weight: var(--fw-medium);
+  color: var(--text-primary);
+}
+.arasul-search-file-dir {
+  flex: 1;
+  color: var(--text-tertiary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arasul-search-file-count {
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  border-radius: 10px;
+  padding: 0 6px;
+  font-variant-numeric: tabular-nums;
+}
+
+.arasul-search-hit {
+  display: flex;
+  align-items: baseline;
+  gap: 12px;
+  width: 100%;
+  padding: 4px 16px 4px 32px;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  text-align: left;
+  color: var(--text-secondary);
+  transition: background var(--motion-fast);
+}
+.arasul-search-hit:hover { background: var(--hover); color: var(--text-primary); }
+
+.arasul-search-hit-line {
+  flex-shrink: 0;
+  width: 36px;
+  text-align: right;
+  color: var(--text-tertiary);
+  font-variant-numeric: tabular-nums;
+}
+.arasul-search-hit-text {
+  white-space: pre;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}

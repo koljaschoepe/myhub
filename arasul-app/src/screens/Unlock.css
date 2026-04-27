@@ -1,0 +1,78 @@
+.arasul-unlock {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  background: var(--bg-canvas);
+}
+
+.arasul-unlock-form {
+  width: 360px;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  padding: var(--sp-8);
+  background: var(--bg-pane);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+}
+
+.arasul-unlock-form.shake { animation: unlock-shake 220ms var(--ease-out); }
+
+@keyframes unlock-shake {
+  0%, 100% { transform: translateX(0); }
+  20%      { transform: translateX(-4px); }
+  40%      { transform: translateX(4px); }
+  60%      { transform: translateX(-3px); }
+  80%      { transform: translateX(3px); }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arasul-unlock-form.shake { animation: none; }
+}
+
+.arasul-unlock-brand {
+  font-size: var(--fs-display);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  text-align: center;
+  letter-spacing: 0.02em;
+}
+
+.arasul-unlock-sub {
+  color: var(--text-secondary);
+  text-align: center;
+  font-size: var(--fs-md);
+  margin-bottom: var(--sp-4);
+}
+
+.arasul-unlock-input {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-md);
+}
+
+.arasul-unlock-error {
+  color: var(--danger);
+  font-size: var(--fs-sm);
+}
+
+.arasul-unlock-btn {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--accent);
+  color: var(--text-on-accent);
+  font-weight: var(--fw-medium);
+  border-radius: var(--radius);
+  transition: background var(--motion-fast);
+}
+
+.arasul-unlock-btn:hover:not(:disabled) { background: var(--accent-strong); }
+.arasul-unlock-btn:disabled { opacity: 0.5; cursor: not-allowed; }
+
+.arasul-unlock-footer {
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  text-align: center;
+  margin-top: var(--sp-2);
+}

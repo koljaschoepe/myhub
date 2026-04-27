@@ -1,0 +1,473 @@
+.arasul-editor {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  background: var(--bg-canvas);
+}
+
+/* VS Code-style editor tabs — multi-file. */
+.arasul-editor-tabs {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+  height: 32px;
+  flex: 0 0 32px;
+  padding: 0 6px;
+  border-bottom: var(--border);
+  background: var(--bg-pane);
+  overflow-x: auto;
+  overflow-y: hidden;
+  scrollbar-width: none;
+  user-select: none;
+}
+.arasul-editor-tabs::-webkit-scrollbar { display: none; }
+
+.arasul-editor-tab {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  height: 24px;
+  padding: 0 4px 0 10px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  font-size: var(--fs-xs);
+  font-family: var(--font-mono);
+  letter-spacing: 0.02em;
+  transition: background var(--motion-fast), color var(--motion-fast);
+  flex-shrink: 0;
+  max-width: 220px;
+}
+.arasul-editor-tab:hover { background: var(--hover); color: var(--text-secondary); }
+.arasul-editor-tab.active {
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  box-shadow: inset 0 -1px 0 var(--accent);
+}
+.arasul-editor-tab-name {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.arasul-editor-tab-close {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 18px;
+  height: 18px;
+  border-radius: var(--radius-sm);
+  color: var(--text-tertiary);
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-editor-tab-close:hover { background: var(--hover); color: var(--text-primary); }
+
+.arasul-editor-tabs-spacer { flex: 1; }
+
+.arasul-editor-body {
+  flex: 1;
+  min-height: 0;
+  position: relative;
+  overflow: hidden;
+}
+
+/* CodeMirror needs a concrete resolved height. Absolute-inset guarantees
+   a stable box even when our flex chain has late-resolution quirks. */
+.arasul-editor-textbody {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  grid-template-columns: 1fr;
+  overflow: hidden;
+}
+.arasul-editor-textbody.split {
+  grid-template-columns: 1fr 1fr;
+}
+.arasul-editor-textbody.split .arasul-editor-cm {
+  border-right: var(--border);
+}
+
+.arasul-editor-cm {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+}
+.arasul-editor-cm .cm-editor {
+  flex: 1;
+  min-height: 0;
+  height: 100%;
+}
+
+/* Same focus-suppression contract as MarkdownEditor.css: caret is the
+   signal, not chrome. Defeats CodeMirror's default cm-focused outline
+   AND the global [tabindex]:focus-visible focus-ring from theme.css. */
+.arasul-editor-cm .cm-editor,
+.arasul-editor-cm .cm-editor.cm-focused,
+.arasul-editor-cm .cm-editor:focus,
+.arasul-editor-cm .cm-editor:focus-visible,
+.arasul-editor-cm .cm-content,
+.arasul-editor-cm .cm-content:focus,
+.arasul-editor-cm .cm-content:focus-visible,
+.arasul-editor-cm .cm-scroller:focus,
+.arasul-editor-cm .cm-scroller:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+  border-color: transparent !important;
+}
+
+.arasul-editor-statusdot {
+  position: absolute;
+  top: 8px;
+  right: 12px;
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  pointer-events: none;
+  transition: background var(--motion-fast), opacity var(--motion-fast);
+}
+.arasul-editor-statusdot-clean   { background: transparent; opacity: 0; }
+.arasul-editor-statusdot-saving  { background: var(--text-tertiary); opacity: 0.8; }
+.arasul-editor-statusdot-saved   { background: var(--success); opacity: 0.7; }
+.arasul-editor-statusdot-dirty   { background: var(--accent); opacity: 0.9; }
+.arasul-editor-statusdot-error   { background: var(--danger); opacity: 0.9; }
+
+.arasul-editor-empty {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  color: var(--text-tertiary);
+  gap: var(--sp-2);
+  background: var(--bg-canvas);
+}
+.arasul-editor-empty-title {
+  font-size: var(--fs-lg);
+  color: var(--text-secondary);
+}
+.arasul-editor-empty-hint { font-size: var(--fs-sm); }
+
+/* ---------- Multi-format viewers ---------- */
+
+.arasul-pdf-shell {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  outline: none;
+}
+.arasul-pdf-toolbar {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-1);
+  height: var(--toolbar-h);
+  padding: 0 var(--sp-3);
+  background: var(--bg-canvas);
+  border-bottom: 1px solid var(--border-subtle);
+  user-select: none;
+  flex-shrink: 0;
+}
+.arasul-pdf-tbtn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 28px;
+  height: 28px;
+  padding: 0 var(--sp-2);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-sm);
+  color: var(--text-secondary);
+  font-variant-numeric: tabular-nums;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-pdf-tbtn:hover { background: var(--hover); color: var(--text-primary); }
+.arasul-pdf-tbtn.arasul-pdf-zoomlabel { min-width: 56px; }
+
+.arasul-pdf-scroller {
+  flex: 1;
+  min-height: 0;
+  overflow: auto;
+  background: var(--bg-elevated);
+  padding: var(--sp-6) 0;
+}
+.arasul-pdf-scroller .react-pdf__Document {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-4);
+}
+.arasul-pdf-scroller .react-pdf__Page {
+  background: white;
+  border-radius: var(--radius);
+  box-shadow: var(--shadow-md);
+  overflow: hidden;
+}
+
+.arasul-image-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-canvas);
+  padding: var(--sp-6);
+  overflow: auto;
+}
+.arasul-image-viewer img {
+  max-width: 100%;
+  max-height: 100%;
+  object-fit: contain;
+  border-radius: var(--radius);
+}
+
+.arasul-media-viewer {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--bg-canvas);
+  padding: var(--sp-6);
+}
+.arasul-media-viewer audio { width: 100%; max-width: 480px; }
+.arasul-media-viewer video {
+  max-width: 100%;
+  max-height: 100%;
+  border-radius: var(--radius);
+}
+
+.arasul-viewer-loading,
+.arasul-viewer-error {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+  text-align: center;
+  padding: var(--sp-6);
+}
+.arasul-viewer-error {
+  color: var(--danger);
+  white-space: pre-wrap;
+}
+
+.arasul-unsupported {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-3);
+  color: var(--text-tertiary);
+  text-align: center;
+  padding: var(--sp-6);
+}
+.arasul-unsupported-title {
+  color: var(--text-primary);
+  font-family: var(--font-mono);
+  font-size: var(--fs-md);
+}
+.arasul-unsupported-hint {
+  font-size: var(--fs-sm);
+  max-width: 360px;
+  line-height: var(--lh-body);
+}
+.arasul-unsupported-btn {
+  margin-top: var(--sp-2);
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  transition: background var(--motion-fast);
+}
+.arasul-unsupported-btn:hover { background: var(--accent); color: var(--text-on-accent); }
+.arasul-unsupported-btn:disabled { opacity: 0.5; cursor: wait; }
+
+/* ---- Drag-drop + import ---- */
+
+.arasul-editor-droproot { position: relative; }
+
+.arasul-editor-import-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--text-tertiary);
+  border-radius: var(--radius-sm);
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-editor-import-icon:hover { background: var(--hover); color: var(--accent); }
+
+.arasul-editor-import-btn {
+  margin-top: var(--sp-3);
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: var(--radius);
+  background: var(--accent-soft);
+  color: var(--accent);
+  font-size: var(--fs-sm);
+  transition: background var(--motion-fast);
+}
+.arasul-editor-import-btn:hover:not(:disabled) { background: var(--accent); color: var(--text-on-accent); }
+.arasul-editor-import-btn:disabled { opacity: 0.5; cursor: wait; }
+
+.arasul-drop-overlay {
+  position: absolute;
+  inset: 0;
+  background: color-mix(in srgb, var(--accent) 16%, transparent);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 200;
+  pointer-events: none;
+  animation: drop-in 120ms ease-out;
+  border: 2px dashed var(--accent);
+  border-radius: var(--radius);
+}
+@keyframes drop-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+.arasul-drop-card {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 24px 36px;
+  background: var(--bg-pane);
+  border-radius: var(--radius-lg);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+  box-shadow: 0 12px 32px rgba(0,0,0,0.5);
+}
+
+.arasul-import-toast {
+  position: absolute;
+  bottom: 16px;
+  right: 16px;
+  padding: 8px 14px;
+  border-radius: var(--radius);
+  font-size: var(--fs-sm);
+  z-index: 220;
+  animation: toast-in 160ms ease-out;
+}
+.arasul-import-toast-ok  { background: var(--success); color: var(--text-on-accent); }
+.arasul-import-toast-err { background: var(--danger);  color: white; }
+@keyframes toast-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.arasul-conflict-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0,0,0,0.55);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+}
+.arasul-conflict {
+  width: min(420px, 92vw);
+  background: var(--bg-pane);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+.arasul-conflict h3 {
+  margin: 0;
+  font-size: var(--fs-lg);
+  font-weight: var(--fw-medium);
+}
+.arasul-conflict-actions {
+  display: flex;
+  gap: var(--sp-2);
+  justify-content: flex-end;
+  margin-top: var(--sp-2);
+}
+
+/* ---- CSV table viewer ---- */
+
+.arasul-csv-scroller {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: var(--bg-canvas);
+}
+.arasul-csv-table {
+  border-collapse: collapse;
+  font-family: var(--font-mono);
+  font-size: 12px;
+  width: max-content;
+  min-width: 100%;
+}
+.arasul-csv-table th,
+.arasul-csv-table td {
+  padding: 4px 10px;
+  border-right: 1px solid var(--border-subtle);
+  border-bottom: 1px solid var(--border-subtle);
+  white-space: nowrap;
+  vertical-align: top;
+}
+.arasul-csv-table th {
+  background: var(--bg-pane);
+  position: sticky;
+  top: 0;
+  text-align: left;
+  font-weight: var(--fw-medium);
+  color: var(--text-secondary);
+}
+.arasul-csv-rownum {
+  background: var(--bg-pane);
+  color: var(--text-tertiary);
+  position: sticky;
+  left: 0;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ---- DOCX viewer ---- */
+
+.arasul-docx-scroller {
+  position: absolute;
+  inset: 0;
+  overflow: auto;
+  background: var(--bg-canvas);
+  padding: 32px 0 60px;
+}
+.arasul-docx-inner {
+  max-width: 760px;
+  margin: 0 auto;
+  padding: 0 32px;
+  font-family: var(--font-sans);
+  font-size: 15px;
+  line-height: 1.7;
+  color: var(--text-primary);
+}
+.arasul-docx-inner h1, .arasul-docx-inner h2, .arasul-docx-inner h3 {
+  font-weight: var(--fw-semibold);
+  margin: 1em 0 0.4em;
+}
+.arasul-docx-inner h1 { font-size: 28px; }
+.arasul-docx-inner h2 { font-size: 22px; }
+.arasul-docx-inner h3 { font-size: 18px; }
+.arasul-docx-inner p { margin: 0 0 0.7em; }
+.arasul-docx-inner table {
+  border-collapse: collapse;
+  margin: 1em 0;
+}
+.arasul-docx-inner th, .arasul-docx-inner td {
+  border: 1px solid var(--border-subtle);
+  padding: 6px 10px;
+}

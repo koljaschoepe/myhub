@@ -1,0 +1,128 @@
+.arasul-pp-loading,
+.arasul-pp-error {
+  padding: var(--sp-3) var(--sp-4);
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+}
+.arasul-pp-error { color: var(--danger); }
+
+.arasul-pp-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.arasul-pp-item {
+  border: var(--border);
+  border-radius: var(--radius);
+  background: var(--bg-pane);
+  padding: var(--sp-3);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.arasul-pp-item--selected {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent) inset;
+}
+
+.arasul-pp-item-main {
+  background: transparent;
+  border: 0;
+  padding: 0;
+  width: 100%;
+  cursor: pointer;
+  text-align: left;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  color: inherit;
+  font: inherit;
+}
+.arasul-pp-item-main:disabled { cursor: not-allowed; }
+.arasul-pp-item-main:disabled .arasul-pp-name { color: var(--text-tertiary); }
+
+.arasul-pp-item-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  flex-wrap: wrap;
+}
+
+.arasul-pp-name {
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+  font-size: var(--fs-md);
+}
+
+.arasul-pp-detail {
+  font-family: var(--font-mono, monospace);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.arasul-pp-badge {
+  font-size: var(--fs-xs);
+  padding: 1px var(--sp-2);
+  border-radius: var(--radius-sm, 4px);
+  background: var(--border-subtle);
+  color: var(--text-secondary);
+  font-weight: var(--fw-medium);
+  white-space: nowrap;
+}
+.arasul-pp-badge--subscription { background: rgba(0, 122, 255, 0.12); color: var(--accent); }
+.arasul-pp-badge--api          { background: rgba(255, 159, 10, 0.14); color: var(--warning, #ff9f0a); }
+.arasul-pp-badge--local        { background: rgba(48, 209, 88, 0.12); color: var(--success, #30d158); }
+.arasul-pp-badge--ok           { background: rgba(48, 209, 88, 0.18); color: var(--success, #30d158); }
+.arasul-pp-badge--warn         { background: rgba(255, 159, 10, 0.18); color: var(--warning, #ff9f0a); }
+.arasul-pp-badge--missing      { background: var(--border-subtle); color: var(--text-tertiary); }
+
+.arasul-pp-install {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  padding-top: var(--sp-1);
+  border-top: 1px dashed var(--border-subtle);
+}
+
+.arasul-pp-prereq {
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+}
+
+.arasul-pp-install-actions {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.arasul-pp-docs {
+  font-size: var(--fs-sm);
+  color: var(--accent);
+  text-decoration: none;
+}
+.arasul-pp-docs:hover { text-decoration: underline; }
+
+.arasul-pp-error-inline {
+  color: var(--danger);
+  font-size: var(--fs-xs);
+}
+
+.arasul-pp-log {
+  margin: 0;
+  padding: var(--sp-3);
+  max-height: 180px;
+  overflow-y: auto;
+  background: var(--bg-canvas);
+  border: var(--border);
+  border-radius: var(--radius);
+  font-family: var(--font-mono, monospace);
+  font-size: var(--fs-xs);
+  line-height: 1.45;
+  color: var(--text-secondary);
+  white-space: pre-wrap;
+  word-break: break-word;
+}

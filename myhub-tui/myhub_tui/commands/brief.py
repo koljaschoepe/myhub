@@ -8,23 +8,14 @@ from __future__ import annotations
 import datetime
 import os
 import subprocess
-from pathlib import Path
 
+from myhub_tui.core.bin_resolve import resolve_claude
 from myhub_tui.core.state import TuiState
 from myhub_tui.core.theme import DIM
 from myhub_tui.core.types import CommandResult
 
 
 BRIEFER_TIMEOUT_SECONDS = 12
-
-
-def _resolve_claude(root: Path) -> str | None:
-    ssd_bin = root / "bin" / "claude"
-    if ssd_bin.is_file() and os.access(ssd_bin, os.X_OK):
-        return str(ssd_bin)
-    import shutil
-
-    return shutil.which("claude")
 
 
 def _static_greeting(user: str) -> str:
@@ -45,7 +36,7 @@ def _static_greeting(user: str) -> str:
 
 
 def cmd_brief(state: TuiState, _: list[str]) -> CommandResult:
-    claude = _resolve_claude(state.root)
+    claude = resolve_claude(state.root)
     if not claude:
         return CommandResult(
             ok=True,

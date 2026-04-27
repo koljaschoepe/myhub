@@ -1,0 +1,131 @@
+.arasul-app {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  width: 100%;
+  min-height: 0;
+}
+
+/* Screen-routing host. Each direct child screen fades in on mount so the
+   transitions between checking → locked/absent → main feel deliberate
+   instead of harsh state-machine cuts. */
+.arasul-screen-host {
+  position: relative;
+  width: 100%;
+  height: 100%;
+}
+
+.arasul-screen {
+  width: 100%;
+  height: 100%;
+  animation: screen-in var(--dur-base) var(--ease-out) both;
+}
+
+@keyframes screen-in {
+  from { opacity: 0; transform: translateY(4px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+.arasul-splash {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-6);
+  background: var(--bg-canvas);
+}
+
+.arasul-splash-mark {
+  color: var(--text-primary);
+  font-size: var(--fs-display);
+  font-weight: var(--fw-semibold);
+  letter-spacing: 0.02em;
+  /* Subtle pulse so the splash feels alive even if vault check stalls. */
+  animation: splash-pulse 1600ms var(--ease-out) infinite;
+}
+
+/* Drive-not-found state: shown when detect_drive_root errors. */
+.arasul-splash-error {
+  max-width: 420px;
+  padding: var(--sp-4) var(--sp-5);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  text-align: center;
+  font-size: var(--fs-md);
+  line-height: 1.5;
+}
+.arasul-splash-error p { margin: 0; }
+.arasul-splash-error p + p { margin-top: var(--sp-2); }
+.arasul-splash-error code {
+  padding: 1px 6px;
+  border-radius: var(--radius-sm);
+  background: var(--bg-canvas);
+  font-family: var(--font-mono);
+  font-size: 0.9em;
+  color: var(--accent);
+}
+
+@keyframes splash-pulse {
+  0%, 100% { opacity: 0.85; }
+  50%      { opacity: 1; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .arasul-screen { animation: none; }
+  .arasul-splash-mark { animation: none; opacity: 1; }
+}
+
+.arasul-terminal {
+  width: 100%;
+  height: 100%;
+  background: var(--bg-canvas);
+}
+
+.arasul-eject-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.7);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1100;
+  backdrop-filter: blur(4px);
+}
+
+.arasul-eject-card {
+  width: min(440px, 92vw);
+  padding: var(--sp-6) var(--sp-8);
+  background: var(--bg-pane);
+  border: var(--border);
+  border-radius: var(--radius-lg);
+  text-align: left;
+}
+
+.arasul-eject-card h2 {
+  margin: 0 0 var(--sp-3);
+  font-size: var(--fs-xl);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+
+.arasul-eject-card p {
+  color: var(--text-secondary);
+  margin: 0 0 var(--sp-2);
+  line-height: var(--lh-body);
+}
+
+.arasul-eject-hint { color: var(--text-tertiary); font-size: var(--fs-sm); }
+.arasul-eject-card code { font-family: var(--font-mono); color: var(--text-primary); }
+
+/* Focus mode (⌘;): tree + right pane fade out, editor takes full width.
+   Status bar + top bar remain so the user keeps wayfinding cues. */
+.arasul-app.focus .arasul-pane-tree,
+.arasul-app.focus .arasul-pane-right,
+.arasul-app.focus [data-panel-resize-handle-id] {
+  display: none !important;
+}
+.arasul-app.focus .arasul-pane-editor { flex: 1 !important; }
+.arasul-app.focus .arasul-topbar { opacity: 0.4; transition: opacity var(--motion); }
+.arasul-app.focus .arasul-topbar:hover { opacity: 1; }

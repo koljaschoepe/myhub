@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="description" content="Request access to the Arasul private beta — a portable AI workspace on a USB-C SSD.">
+  <meta name="theme-color" content="#0E0F11">
+  <title>Arasul — Beta signup</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+  <meta property="og:title" content="Join the Arasul beta">
+  <meta property="og:description" content="Plug a USB-C SSD into any computer. Encrypted by a passphrase only you know.">
+  <meta property="og:image" content="https://arasul.dev/og-image.png">
+  <meta property="og:url" content="https://arasul.dev/signup.html">
+  <meta name="twitter:card" content="summary_large_image">
+  <link rel="canonical" href="https://arasul.dev/signup.html">
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Regular.woff2" crossorigin>
+  <link rel="preload" as="font" type="font/woff2" href="/fonts/Geist-Medium.woff2" crossorigin>
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .signup {
+      max-width: 520px;
+      margin: 80px auto;
+      padding: 40px;
+      background: var(--pane);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+    }
+    .signup label {
+      display: block;
+      font-size: 13px;
+      color: var(--text-muted);
+      margin: 16px 0 6px;
+    }
+    .signup input, .signup textarea, .signup select {
+      width: 100%;
+      background: var(--elevated);
+      border: 1px solid var(--border);
+      color: var(--text);
+      padding: 10px 12px;
+      border-radius: 8px;
+      font-family: inherit;
+      font-size: 15px;
+    }
+    .signup input:focus, .signup textarea:focus {
+      outline: 0;
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-soft);
+    }
+    .note {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--elevated);
+      border-left: 2px solid var(--accent);
+      border-radius: 6px;
+      color: var(--text-muted);
+      font-size: 13px;
+      line-height: 1.5;
+    }
+    .signup-error {
+      margin-top: 16px;
+      padding: 10px 14px;
+      background: rgba(229, 92, 92, 0.10);
+      border: 1px solid rgba(229, 92, 92, 0.4);
+      border-radius: 6px;
+      color: #E55C5C;
+      font-size: 14px;
+    }
+    .signup-success { text-align: center; padding: 40px 0; }
+    .signup-success-mark {
+      width: 56px; height: 56px;
+      margin: 0 auto 20px;
+      display: flex; align-items: center; justify-content: center;
+      background: rgba(98, 201, 138, 0.13);
+      color: #62C98A;
+      border-radius: 50%;
+      font-size: 28px;
+    }
+    .signup-success h2 {
+      font-size: 24px;
+      font-weight: 600;
+      margin: 0 0 12px;
+    }
+    .signup-success p {
+      color: var(--text-muted);
+      max-width: 380px;
+      margin: 0 auto 24px;
+      font-size: 15px;
+    }
+  </style>
+</head>
+<body>
+
+<header class="hero" style="padding-bottom: 0;">
+  <nav class="nav">
+    <a class="brand" href="index.html">Arasul</a>
+    <div class="nav-links">
+      <a href="index.html">Home</a>
+      <a href="https://github.com/arasul/arasul">GitHub</a>
+    </div>
+  </nav>
+</header>
+
+<div class="signup">
+  <h1 style="font-size: 32px; margin: 0 0 8px;">Beta signup</h1>
+  <p style="color: var(--text-muted); margin: 0 0 16px;">
+    Fill out the form below and hit "Send" — it opens your email client with a pre-filled message to
+    <code>hello@arasul.dev</code>. No form server, no tracking, no mailing list. You'll get a direct reply.
+  </p>
+
+  <form id="signup-form">
+    <label>Your role or context</label>
+    <select name="role" required>
+      <option value="">Choose…</option>
+      <option>Student (undergrad / grad / PhD)</option>
+      <option>Researcher</option>
+      <option>Technical writer / knowledge worker</option>
+      <option>Indie developer</option>
+      <option>Journalist</option>
+      <option>Other</option>
+    </select>
+
+    <label>What would you use Arasul for? (optional but helpful)</label>
+    <textarea name="use_case" rows="3" placeholder="Thesis writing · research notes · side-project journals · …"></textarea>
+
+    <label>SKU preference</label>
+    <select name="sku">
+      <option value="sku-b">SKU B — I'll bring my own SSD</option>
+      <option value="sku-a">SKU A — preloaded SSD when available</option>
+      <option value="both">Either / not sure yet</option>
+    </select>
+
+    <div id="signup-error" class="signup-error" hidden role="alert" aria-live="polite"></div>
+
+    <button type="submit" class="cta primary" style="margin-top: 24px; width: 100%; justify-content: center;">
+      Send email
+    </button>
+
+    <div class="note">
+      If your browser blocks <code>mailto:</code>, copy the details from this form and email
+      <a href="mailto:hello@arasul.dev">hello@arasul.dev</a> directly — that's the same address the form uses.
+    </div>
+  </form>
+
+  <div id="signup-success" class="signup-success" hidden role="status" aria-live="polite">
+    <div class="signup-success-mark">✓</div>
+    <h2>Email opened.</h2>
+    <p>
+      Your mail client should be composing a message to
+      <code>hello@arasul.dev</code> right now. Hit send and we'll reply within
+      a day. If nothing opened, copy this email address and write to us
+      directly.
+    </p>
+    <button type="button" class="cta ghost" id="signup-reset">Send another</button>
+  </div>
+</div>
+
+<script>
+  const form = document.getElementById("signup-form");
+  const errorEl = document.getElementById("signup-error");
+  const successEl = document.getElementById("signup-success");
+  const resetBtn = document.getElementById("signup-reset");
+
+  function showError(msg) {
+    errorEl.textContent = msg;
+    errorEl.hidden = false;
+  }
+  function clearError() {
+    errorEl.textContent = "";
+    errorEl.hidden = true;
+  }
+
+  form.addEventListener("submit", (e) => {
+    e.preventDefault();
+    clearError();
+    const data = Object.fromEntries(new FormData(form));
+
+    if (!data.role) {
+      showError("Pick a role so we know how to reply usefully.");
+      form.querySelector('select[name="role"]').focus();
+      return;
+    }
+
+    const body = [
+      `Role: ${data.role}`,
+      `Use case: ${data.use_case || "(not given)"}`,
+      `SKU preference: ${data.sku}`,
+      "",
+      "—",
+      "Sent from arasul.dev/signup.html",
+    ].join("\n");
+    const subject = `Arasul beta — ${data.role || "signup"}`;
+    window.location.href =
+      `mailto:hello@arasul.dev?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+
+    // We can't observe the mail client; assume it launched. Switch to
+    // a success state after a short delay so the user has visible
+    // confirmation either way.
+    setTimeout(() => {
+      form.hidden = true;
+      successEl.hidden = false;
+    }, 600);
+  });
+
+  resetBtn.addEventListener("click", () => {
+    successEl.hidden = true;
+    form.hidden = false;
+    form.reset();
+    clearError();
+  });
+</script>
+
+</body>
+</html>

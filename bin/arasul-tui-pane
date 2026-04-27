@@ -1,0 +1,89 @@
+#!/bin/bash
+# arasul-tui-pane — entrypoint for the Arasul GUI right-pane PTY.
+# Wraps myhub-tui with a respawn loop, scoped to one project.
+# When myhub-tui execs into /claude, /codex, /lazygit etc., bash exits
+# along with the python process; the TUI writes .boot/.respawn first
+# so we know to restart it after the launched binary terminates.
+#
+# Fallback policy (per Arasul GUI design): if myhub-tui isn't bootstrapped,
+# drop to plain bash, NOT to claude. The user has decided no-auto-launch
+# of any single agent — that decision belongs in the TUI command surface.
+set -u
+
+MYHUB_ROOT="${ARASUL_DRIVE_ROOT:-${MYHUB_ROOT:-}}"
+PROJECT_SLUG="${ARASUL_PROJECT:-}"
+
+if [[ -z "$MYHUB_ROOT" ]]; then
+  echo "arasul-tui-pane: ARASUL_DRIVE_ROOT / MYHUB_ROOT not set" >&2
+  exec bash
+fi
+
+TUI="$MYHUB_ROOT/bin/myhub-tui"
+PYTHON_RUNTIME="$MYHUB_ROOT/runtime/python/bin/python3"
+
+if [[ ! -x "$TUI" || ! -x "$PYTHON_RUNTIME" ]]; then
+  cat >&2 <<EOF
+
+arasul-tui: myhub-tui not bootstrapped on this drive.
+  expected:
+    $TUI
+    $PYTHON_RUNTIME
+
+  install once:
+    bash "$MYHUB_ROOT/tooling/install-python.sh"
+    bash "$MYHUB_ROOT/tooling/install-uv.sh"
+
+Dropping into plain bash. Type 'exit' to close this pane.
+
+EOF
+  if [[ -d "$MYHUB_ROOT/content" ]]; then cd "$MYHUB_ROOT/content"; fi
+  exec bash
+fi
+
+if [[ -n "$PROJECT_SLUG" && -d "$MYHUB_ROOT/content/projects/$PROJECT_SLUG" ]]; then
+  cd "$MYHUB_ROOT/content/projects/$PROJECT_SLUG"
+else
+  cd "$MYHUB_ROOT"
+fi
+
+export MYHUB_ROOT
+export CLAUDE_CONFIG_DIR="$MYHUB_ROOT/.claude"
+export CLAUDE_CODE_PLUGIN_CACHE_DIR="$MYHUB_ROOT/.claude/plugins"
+export PATH="$MYHUB_ROOT/bin:$PATH"
+
+MARKER="$MYHUB_ROOT/.boot/.respawn"
+mkdir -p "$MYHUB_ROOT/.boot"
+
+CRASH_COUNT=0
+WINDOW_START=$SECONDS
+
+while true; do
+  rm -f "$MARKER"
+  START_TS=$SECONDS
+  "$TUI" || true
+  END_TS=$SECONDS
+
+  if [[ -f "$MARKER" ]]; then
+    CRASH_COUNT=0
+    continue
+  fi
+
+  # No marker → either a clean /quit or a crash. ≥3s of uptime = clean.
+  if (( END_TS - START_TS >= 3 )); then
+    break
+  fi
+
+  if (( END_TS - WINDOW_START > 10 )); then
+    CRASH_COUNT=0
+    WINDOW_START=$END_TS
+  fi
+  CRASH_COUNT=$(( CRASH_COUNT + 1 ))
+  if (( CRASH_COUNT >= 5 )); then
+    echo "" >&2
+    echo "arasul-tui: TUI crashed 5× in 10s — dropping to bash." >&2
+    echo "  Inspect:  $TUI" >&2
+    echo "" >&2
+    cd "$MYHUB_ROOT/content" 2>/dev/null || cd "$MYHUB_ROOT"
+    exec bash
+  fi
+done
