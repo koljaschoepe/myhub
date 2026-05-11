@@ -1,5 +1,5 @@
-import { useState, useRef, useEffect } from "react";
-import { Eye, EyeOff } from "lucide-react";
+import { useState, useRef, useEffect, useCallback } from "react";
+import { Eye, EyeOff, ArrowUpFromLine } from "lucide-react";
 import { useSession } from "../lib/session";
 import { Button, Input, IconButton } from "../components/ui";
 import "./Unlock.css";
@@ -25,9 +25,16 @@ export function Unlock() {
   const [busy, setBusy] = useState(false);
   const [errorNonce, setErrorNonce] = useState(0);
   const [shaking, setShaking] = useState(false);
+  // Phase 4.3: Caps-Lock detector. Surfaces an inline warning so users
+  // on unfamiliar keyboards spot the most common typo before submitting.
+  const [capsLock, setCapsLock] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
+
+  const checkCapsLock = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    setCapsLock(e.getModifierState?.("CapsLock") ?? false);
+  }, []);
 
   // Retrigger the shake animation each time errorNonce increments — even
   // when the same error message ("Wrong passphrase.") fires twice in a row.
@@ -86,9 +93,11 @@ export function Unlock() {
           autoComplete="current-password"
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
+          onKeyDown={checkCapsLock}
+          onKeyUp={checkCapsLock}
           disabled={busy}
           aria-invalid={!!error}
-          aria-describedby={error ? "unlock-error" : undefined}
+          aria-describedby={error ? "unlock-error" : capsLock ? "unlock-caps" : undefined}
           trailing={
             <IconButton
               type="button"
@@ -103,6 +112,13 @@ export function Unlock() {
             </IconButton>
           }
         />
+
+        {capsLock && !error && (
+          <div id="unlock-caps" className="arasul-unlock-hint" role="status">
+            <ArrowUpFromLine size={12} aria-hidden="true" />
+            Caps Lock is on.
+          </div>
+        )}
 
         {error && (
           <div id="unlock-error" className="arasul-unlock-error" role="alert">

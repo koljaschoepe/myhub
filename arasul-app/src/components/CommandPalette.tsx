@@ -174,9 +174,9 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
                     Search across files… <kbd>⌘⇧F</kbd>
                   </Command.Item>
                 </Command.Group>
-                <Command.Group heading="Vault">
+                <Command.Group heading="Drive lock">
                   <Command.Item onSelect={() => { void lock(); setOpen(false); }}>
-                    Lock vault
+                    Lock drive
                   </Command.Item>
                 </Command.Group>
                 <Command.Group heading="App">

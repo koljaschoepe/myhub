@@ -100,7 +100,7 @@ function AppShell() {
       unlistenEject = await listen<{ mount_point: string }>("drive://ejected", (e) => {
         if (e.payload.mount_point === driveRoot) {
           setEjected(e.payload.mount_point);
-          void lock().catch((err) => notify.err("Couldn't lock the vault on eject", err));
+          void lock().catch((err) => notify.err("Couldn't lock the drive on eject", err));
         }
       });
       unlistenMount = await listen<{ mount_point: string }>("drive://mounted", (e) => {
@@ -161,7 +161,7 @@ function AppShell() {
         setPaletteOpen(false);
         setSearchOpen(false);
         setShortcutsOpen(false);
-        void lock().catch((err) => notify.err("Couldn't lock the vault", err));
+        void lock().catch((err) => notify.err("Couldn't lock the drive", err));
       } else if (e.key === "Escape") {
         setSettingsOpen(false);
         setPaletteOpen(false);
@@ -243,7 +243,7 @@ function DriveEjectedModal({ mountPoint }: { mountPoint: string }) {
           Plug <code>{mountPoint}</code> back in when you're ready — your last edit is saved.
         </p>
         <p className="arasul-eject-hint">
-          Arasul locked the vault automatically. You'll unlock it again on reconnect.
+          Arasul locked the drive automatically. You'll unlock it again on reconnect.
         </p>
       </div>
     </div>

@@ -83,7 +83,7 @@ export function StatusBar() {
 
   const onLockClick = () => {
     if (state.status !== "unlocked") return;
-    void lock().catch((e) => notify.err("Couldn't lock the vault", e));
+    void lock().catch((e) => notify.err("Couldn't lock the drive", e));
   };
 
   return (
@@ -129,10 +129,10 @@ export function StatusBar() {
           type="button"
           className="arasul-status-clickable"
           onClick={onLockClick}
-          title={vault === "unlocked" ? "Click to lock vault (⌘L)" : "Vault is locked"}
+          title={vault === "unlocked" ? "Click to lock the drive (⌘L)" : "Drive is locked"}
           disabled={vault !== "unlocked"}
         >
-          <Lock size={10} /> vault {vault}
+          <Lock size={10} /> drive {vault}
         </button>
         <span className="arasul-status-sep">·</span>
         <span>{project}</span>

@@ -57,6 +57,16 @@
   font-size: var(--fs-sm);
 }
 
+/* Phase 4.3: Caps-Lock inline hint. Amber, not red — informational
+ * rather than error-ish; reverts the moment Caps Lock is released. */
+.arasul-unlock-hint {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  color: var(--warning);
+  font-size: var(--fs-sm);
+}
+
 .arasul-unlock-btn {
   width: 100%;
   padding: var(--sp-3) var(--sp-4);

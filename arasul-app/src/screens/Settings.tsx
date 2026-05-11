@@ -52,7 +52,7 @@ const LABELS: Record<Tab, string> = {
   claude:     "Claude AI",
   github:     "GitHub",
   drive:      "Drive",
-  vault:      "Vault",
+  vault:      "Drive lock",
   privacy:    "Privacy",
   updates:    "Updates",
   about:      "About",
@@ -947,7 +947,7 @@ function VaultTab() {
 
       <Section title="Auto-lock">
         <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
-          Automatically lock the vault after this many minutes of inactivity. Useful on shared computers.
+          Automatically lock the drive after this many minutes of inactivity. Useful on shared computers.
         </p>
         <FormField label="Lock after">
           {(props) => (
@@ -974,7 +974,7 @@ function VaultTab() {
           Closes your session. Plaintext is zeroed. Shortcut: ⌘L.
         </p>
         <div>
-          <Button variant="ghost" onClick={() => void lock()}>Lock vault</Button>
+          <Button variant="ghost" onClick={() => void lock()}>Lock drive</Button>
         </div>
       </Section>
     </TabBody>
@@ -989,7 +989,7 @@ function PrivacyTab() {
   return (
     <TabBody title="Privacy">
       <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
-        Arasul is a local-first app. Your files, your projects, your vault — all stay on the SSD
+        Arasul is a local-first app. Your files, your projects, your drive lock — all stay on the SSD
         you're holding. There are no Arasul servers. There is no telemetry.
       </p>
 
@@ -1013,7 +1013,7 @@ function PrivacyTab() {
 
       <Section title="What never leaves your drive">
         <ul className="pl-6 m-0 text-[length:var(--text-body-sm)] text-fg-muted leading-[1.6] flex flex-col gap-2">
-          <li>Your vault passphrase.</li>
+          <li>Your drive-lock passphrase.</li>
           <li>Your files, projects, and notes.</li>
           <li>Your editor history, cursor positions, local shell history.</li>
           <li>Crash logs (none collected; they're local console output).</li>

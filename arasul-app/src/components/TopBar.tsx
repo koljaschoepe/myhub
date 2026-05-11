@@ -105,7 +105,7 @@ export function TopBar({ onOpenSettings }: Props = {}) {
       : ws.openFilePath
         ? `${ws.openFilePath.split("/").pop()}`
         : "Open a file to start — or press ⌘P to pick a project"
-    : state.status === "locked" ? "vault locked"
+    : state.status === "locked" ? "drive locked"
     : state.status === "absent" ? "onboarding"
     : "";
 

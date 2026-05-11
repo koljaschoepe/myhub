@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useCallback } from "react";
 import { zxcvbn, zxcvbnOptions } from "@zxcvbn-ts/core";
 import * as zxcvbnCommonPackage from "@zxcvbn-ts/language-common";
 import * as zxcvbnEnPackage from "@zxcvbn-ts/language-en";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
-import { Eye, EyeOff } from "lucide-react";
+import { ArrowLeft, ArrowUpFromLine, Eye, EyeOff, ShieldCheck } from "lucide-react";
 import { useSession } from "../lib/session";
 import { notify } from "../lib/toast";
 import {
@@ -16,6 +16,14 @@ import {
   FormField,
 } from "../components/ui";
 import "./Onboarding.css";
+
+const STEP_ORDER = ["welcome", "passphrase", "claude", "auto-launch"] as const;
+const STEP_LABEL: Record<(typeof STEP_ORDER)[number], string> = {
+  welcome: "Welcome",
+  passphrase: "Set passphrase",
+  claude: "Connect Claude",
+  "auto-launch": "Auto-launch",
+};
 
 zxcvbnOptions.setOptions({
   translations: zxcvbnEnPackage.translations,
@@ -65,6 +73,8 @@ export function Onboarding() {
   const [autoLaunch, setAutoLaunch] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  // Phase 4.3: caps-lock detector for passphrase fields.
+  const [capsLock, setCapsLock] = useState(false);
 
   // Phase 4 — Claude install state.
   const [claudeStatus, setClaudeStatus] = useState<ClaudeInstallStatus | null>(null);
@@ -103,10 +113,26 @@ export function Onboarding() {
   }, [installLog]);
 
   const next = () => {
-    const order: Step[] = ["welcome", "passphrase", "claude", "auto-launch"];
-    const i = order.indexOf(step);
-    setStep(order[Math.min(i + 1, order.length - 1)]);
+    const i = STEP_ORDER.indexOf(step);
+    setStep(STEP_ORDER[Math.min(i + 1, STEP_ORDER.length - 1)]);
+    setError(null);
   };
+
+  // Phase 4.5: lets users walk backwards through the wizard. Form state
+  // is held at the component level so name/passphrase/etc. all survive.
+  const back = () => {
+    const i = STEP_ORDER.indexOf(step);
+    if (i <= 0) return;
+    setStep(STEP_ORDER[i - 1]);
+    setError(null);
+  };
+
+  const stepIndex = STEP_ORDER.indexOf(step);
+  const canGoBack = stepIndex > 0;
+
+  const checkCapsLock = useCallback((e: React.KeyboardEvent<HTMLInputElement>) => {
+    setCapsLock(e.getModifierState?.("CapsLock") ?? false);
+  }, []);
 
   const finishPassphrase = async () => {
     setError(null);
@@ -120,7 +146,7 @@ export function Onboarding() {
       } catch { /* best-effort; missing config is fine */ }
       next();
     } catch (e) {
-      setError(`Couldn't create vault: ${String(e)}`);
+      setError(`Couldn't set up the drive lock: ${String(e)}`);
     } finally {
       setBusy(false);
     }
@@ -199,6 +225,26 @@ export function Onboarding() {
         aria-labelledby="onboarding-title"
         tabIndex={-1}
       >
+        {/* Phase 4.5: step indicator + back nav. Back is disabled on
+            step 1 so first-run users can't escape into a no-state limbo. */}
+        <div className="arasul-onboarding-header">
+          <button
+            type="button"
+            className="arasul-onboarding-back"
+            onClick={back}
+            disabled={!canGoBack || busy || installing}
+            aria-label="Go back to previous step"
+            title="Back"
+          >
+            <ArrowLeft size={14} aria-hidden="true" />
+          </button>
+          <div className="arasul-onboarding-step" aria-live="polite">
+            Step {stepIndex + 1} of {STEP_ORDER.length}
+            <span className="arasul-onboarding-step-sep"> · </span>
+            <span className="arasul-onboarding-step-label">{STEP_LABEL[step]}</span>
+          </div>
+        </div>
+
         {step === "welcome" && (
           <>
             <div id="onboarding-title" className="arasul-brand-hero">Arasul</div>
@@ -238,9 +284,22 @@ export function Onboarding() {
               This protects your AI access on the drive. You'll enter it when you reconnect this drive.
               Write it down somewhere safe — we can't reset it. Your files stay safe either way.
             </p>
-            <p className="arasul-muted">
-              Everything stays on this drive — your files, settings, and chats. No cloud, no sign-up.
-            </p>
+
+            {/* Phase 4.9: trust callout. Specific about WHO sees WHAT —
+                non-coder research showed vague "no cloud" copy doesn't
+                land; explicit endpoint names build more confidence. */}
+            <div className="arasul-trust-callout">
+              <ShieldCheck size={16} aria-hidden="true" />
+              <div>
+                <strong>Your data stays on this drive.</strong>
+                <p>
+                  Files, settings, and chat history are written only to the
+                  USB-C SSD in your hand. The only thing that goes over the
+                  network is your Claude prompts — straight to{" "}
+                  <code>api.anthropic.com</code> on your own subscription.
+                </p>
+              </div>
+            </div>
 
             <FormField label="Passphrase">
               {(props) => (
@@ -250,6 +309,8 @@ export function Onboarding() {
                   placeholder="Passphrase"
                   value={passphrase}
                   onChange={(e) => setPassphrase(e.target.value)}
+                  onKeyDown={checkCapsLock}
+                  onKeyUp={checkCapsLock}
                   autoFocus
                   autoComplete="new-password"
                   trailing={passwordToggle}
@@ -274,12 +335,23 @@ export function Onboarding() {
                   placeholder="Confirm passphrase"
                   value={confirm}
                   onChange={(e) => setConfirm(e.target.value)}
-                  onKeyDown={(e) => { if (e.key === "Enter") void finishPassphrase(); }}
+                  onKeyDown={(e) => {
+                    checkCapsLock(e);
+                    if (e.key === "Enter") void finishPassphrase();
+                  }}
+                  onKeyUp={checkCapsLock}
                   autoComplete="new-password"
                   {...props}
                 />
               )}
             </FormField>
+
+            {capsLock && !error && (
+              <div className="arasul-onboarding-hint" role="status">
+                <ArrowUpFromLine size={12} aria-hidden="true" />
+                Caps Lock is on.
+              </div>
+            )}
 
             <Button
               variant="primary"
