@@ -7,6 +7,7 @@ import { EditorView } from "@codemirror/view";
 import { Play, Square, CheckCircle2, XCircle, Loader2, Circle, History, Trash2, RotateCcw, MessageSquare } from "lucide-react";
 import { useSession } from "../lib/session";
 import { notify } from "../lib/toast";
+import { confirm } from "./ConfirmDialog";
 import "./WorkflowEditor.css";
 
 // ---------------- Backend types (mirrors workflow.rs) ----------------
@@ -256,7 +257,13 @@ export function WorkflowEditor({ filePath }: Props) {
   }, [driveRoot]);
 
   const onDeleteHistorical = useCallback(async (id: string) => {
-    if (!window.confirm("Delete this run from history? This can't be undone.")) return;
+    const ok = await confirm({
+      title: "Delete this run from history?",
+      description: "The run's transcript and outputs will be permanently removed. This can't be undone.",
+      confirmLabel: "Delete run",
+      destructive: true,
+    });
+    if (!ok) return;
     try {
       await invoke("workflow_run_delete", {
         args: { drive_root: driveRoot, run_id: id },

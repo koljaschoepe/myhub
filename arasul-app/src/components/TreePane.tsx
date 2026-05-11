@@ -15,6 +15,7 @@ import {
 import { iconForFile } from "../lib/fileIcons";
 import { getRecent } from "../lib/recentFiles";
 import { notify } from "../lib/toast";
+import { confirm } from "./ConfirmDialog";
 import "./TreePane.css";
 
 const SHOW_HIDDEN_KEY = "arasul.tree.showHidden";
@@ -426,7 +427,15 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
         </>
       )}
       <ContextMenuItem destructive onSelect={async () => {
-        if (!window.confirm(`Move "${node.name}" to Trash?`)) return;
+        const ok = await confirm({
+          title: `Move "${node.name}" to Trash?`,
+          description: node.kind === "dir"
+            ? "The folder and everything inside it will be sent to the system Trash. You can restore it from there."
+            : "The file will be sent to the system Trash. You can restore it from there.",
+          confirmLabel: "Move to Trash",
+          destructive: true,
+        });
+        if (!ok) return;
         try {
           await invoke("delete", { path: node.path });
           refresh();

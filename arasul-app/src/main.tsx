@@ -5,6 +5,7 @@ import App from "./App";
 import { initTheme } from "./lib/theme";
 import { initDensity } from "./lib/density";
 import { TooltipProvider } from "./components/ui";
+import { ConfirmDialogHost } from "./components/ConfirmDialog";
 import "./theme.css";
 
 initTheme();
@@ -17,6 +18,9 @@ ReactDOM.createRoot(document.getElementById("root") as HTMLElement).render(
         delay matches Linear's number. */}
     <TooltipProvider delayDuration={1500} skipDelayDuration={300}>
       <App />
+      {/* Phase 10.5 (2026-05-11): host for the imperative `confirm()` API
+          used by sensitive-op call-sites (delete, eject, lock-with-unsaved). */}
+      <ConfirmDialogHost />
       <Toaster
         position="bottom-left"
         theme="system"

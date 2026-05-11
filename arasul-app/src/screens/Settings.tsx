@@ -64,6 +64,33 @@ const LABELS: Record<Tab, string> = {
   about:         "About",
 };
 
+// Phase 10.2 (2026-05-11): keyword index for the Settings search field.
+// Words beyond the visible label so users can find a setting by what it
+// *does* (e.g. typing "passphrase" finds the Drive-lock tab; "shortcut"
+// → no tab match but we surface "tip: ⌘/ opens Shortcuts").
+const TAB_KEYWORDS: Record<Tab, string[]> = {
+  general:       ["name", "shell", "bash", "zsh", "fish", "powershell", "user"],
+  appearance:    ["theme", "dark", "light", "density", "compact", "color", "look"],
+  accessibility: ["screen reader", "a11y", "motion", "reduce", "aria", "sr"],
+  editor:        ["editor", "font", "tab size", "word wrap", "vim", "indent", "markdown"],
+  terminal:      ["terminal", "shell", "scrollback", "font", "cols", "rows", "xterm"],
+  claude:        ["claude", "anthropic", "ai", "agent", "autonomy", "temperature", "model"],
+  engines:       ["provider", "engine", "openai", "ollama", "gemini", "codex", "cursor", "model"],
+  github:        ["github", "git", "remote", "push", "pull", "auth", "token", "account"],
+  drive:         ["drive", "ssd", "free", "eject", "health", "memory"],
+  vault:         ["vault", "lock", "passphrase", "password", "auto-lock", "encrypt", "drive lock"],
+  privacy:       ["privacy", "telemetry", "tracking", "local", "trust"],
+  updates:       ["update", "version", "release", "patch"],
+  about:         ["about", "version", "build", "license"],
+};
+
+function matchTab(tab: Tab, q: string): boolean {
+  const needle = q.trim().toLowerCase();
+  if (!needle) return true;
+  if (LABELS[tab].toLowerCase().includes(needle)) return true;
+  return TAB_KEYWORDS[tab].some((kw) => kw.includes(needle));
+}
+
 type GithubAccount = { login: string; avatar_url?: string | null; name?: string | null };
 type UpdateInfo = {
   current_version: string;
@@ -102,6 +129,14 @@ export function Settings({
   onClose: () => void;
   initialTab?: Tab;
 }) {
+  // Phase 10.2 (2026-05-11): sidebar search filter. Matches tab label and
+  // keywords. Tabs that don't match are hidden (not just dimmed) — the
+  // sidebar collapses cleanly. Currently-selected tab stays visible even
+  // when filtered out, so the body content doesn't flash empty.
+  const [query, setQuery] = useState("");
+  const [activeTab, setActiveTab] = useState<Tab>(initialTab ?? "general");
+  const visibleTabs = TAB_ORDER.filter((t) => t === activeTab || matchTab(t, query));
+
   return (
     <Dialog open={true} onOpenChange={(o) => !o && onClose()}>
       <DialogContent
@@ -115,21 +150,32 @@ export function Settings({
       >
         <Tabs
           orientation="vertical"
-          defaultValue={initialTab ?? "general"}
+          value={activeTab}
+          onValueChange={(v) => setActiveTab(v as Tab)}
           className="flex h-full max-md:flex-col"
         >
           <aside className="w-[200px] shrink-0 flex flex-col p-3 bg-canvas border-r border-border-subtle max-md:w-full max-md:flex-row max-md:overflow-x-auto max-md:border-r-0 max-md:border-b max-md:border-border-subtle max-md:p-2">
             <div
               id="settings-title"
-              className="px-3 py-2 mb-3 text-[length:var(--text-h4)] font-semibold text-fg max-md:hidden"
+              className="px-3 py-2 mb-2 text-[length:var(--text-h4)] font-semibold text-fg max-md:hidden"
             >
               Settings
+            </div>
+            <div className="px-1 mb-2 max-md:hidden">
+              <Input
+                value={query}
+                onChange={(e) => setQuery(e.target.value)}
+                placeholder="Search settings…"
+                aria-label="Search settings"
+                spellCheck={false}
+                autoComplete="off"
+              />
             </div>
             <TabsList
               orientation="vertical"
               className="w-full !border-b-0 !h-auto gap-0.5 max-md:w-auto max-md:flex-row"
             >
-              {TAB_ORDER.map((t) => (
+              {visibleTabs.map((t) => (
                 <TabsTrigger
                   key={t}
                   value={t}
@@ -138,6 +184,11 @@ export function Settings({
                   {LABELS[t]}
                 </TabsTrigger>
               ))}
+              {query.trim() && visibleTabs.length === 1 && visibleTabs[0] === activeTab && (
+                <p className="px-3 py-2 text-[length:var(--text-caption)] text-fg-muted">
+                  No other settings match.
+                </p>
+              )}
             </TabsList>
             <div className="flex-1 max-md:hidden" />
             <Button variant="ghost" size="sm" onClick={onClose} className="max-md:hidden">
