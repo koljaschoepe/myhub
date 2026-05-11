@@ -204,6 +204,14 @@ pub fn pty_write(
     Ok(())
 }
 
+/// Resize the PTY. On Unix `MasterPty::resize` calls `ioctl(TIOCSWINSZ)`
+/// internally, which the kernel turns into a `SIGWINCH` for the
+/// foreground process group — so myhub-tui's `prompt_toolkit` default
+/// SIGWINCH handler re-queries the terminal size and re-layouts on its
+/// own. The frontend's ResizeObserver → fit() → onResize → pty_resize
+/// chain in `components/RightPane.tsx` keeps this current on every
+/// pane / window resize. (Phase 9.3 documented 2026-05-11 — no new
+/// code needed; the wiring was already complete since Phase 1.4.)
 #[tauri::command]
 pub fn pty_resize(
     state: State<'_, PtyState>,

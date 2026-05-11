@@ -75,6 +75,33 @@ pub fn run() {
         .manage(ProviderState::new())
         .setup(|app| {
             drive_watcher::start(app.handle().clone());
+
+            // Phase 3.5 (2026-05-11): apply explicit NSVisualEffectMaterial
+            // via window-vibrancy on macOS. "Sidebar" gives the Linear /
+            // Cursor blur look. The existing tauri.conf.json
+            // windowEffects: ["sidebar"] already enables vibrancy at a
+            // coarse level — this call replaces that with the crate's
+            // more reliable apply_vibrancy and adds explicit appearance
+            // tracking. macOS-only; the crate isn't compiled on other
+            // platforms (target_os gate in Cargo.toml).
+            #[cfg(target_os = "macos")]
+            {
+                use window_vibrancy::{
+                    apply_vibrancy, NSVisualEffectMaterial, NSVisualEffectState,
+                };
+                if let Some(window) = app.get_webview_window("main") {
+                    // Sidebar material auto-tracks light/dark via the
+                    // window's appearance; FollowsWindowActiveState dims
+                    // when the window loses focus.
+                    let _ = apply_vibrancy(
+                        &window,
+                        NSVisualEffectMaterial::Sidebar,
+                        Some(NSVisualEffectState::FollowsWindowActiveState),
+                        None,
+                    );
+                }
+            }
+
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![

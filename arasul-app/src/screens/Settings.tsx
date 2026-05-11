@@ -1,7 +1,7 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSession } from "../lib/session";
-import { getTheme, setTheme, type ThemeChoice } from "../lib/theme";
+import { getTheme, setTheme, writeThemeBridge, type ThemeChoice } from "../lib/theme";
 import { getDensity, setDensity, type DensityChoice } from "../lib/density";
 import { notify } from "../lib/toast";
 import {
@@ -281,8 +281,17 @@ function GeneralTab() {
  * ============================================================ */
 
 function AppearanceTab() {
+  const { driveRoot } = useSession();
   const [theme, setThemeState] = useState<ThemeChoice>(() => getTheme());
   const [density, setDensityState] = useState<DensityChoice>(() => getDensity());
+
+  // Phase 9.1: write the theme snapshot to .boot/.current-theme.json
+  // on every theme change so myhub-tui can pick up the React palette
+  // on its next launch. Also run once on mount so a fresh session has
+  // a fresh snapshot even if the user never toggles.
+  useEffect(() => {
+    if (driveRoot) void writeThemeBridge(driveRoot);
+  }, [driveRoot, theme]);
 
   return (
     <TabBody title="Appearance">

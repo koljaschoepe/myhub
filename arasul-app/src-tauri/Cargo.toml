@@ -78,8 +78,13 @@ glob = "0.3"                # file.read.glob step pattern matching
 rusqlite = { version = "0.32", features = ["bundled"] }   # workflow run persistence at memory/runs/runs.db
 
 # macOS DiskArbitration for DriveWatcher (1.8). Gated by target_os below.
+# Phase 3.5 (2026-05-11): window-vibrancy crate gives explicit
+# NSVisualEffectMaterial control (Sidebar, HudWindow, UnderWindowBackground,
+# etc.) — finer than tauri.conf.json's windowEffects: ["sidebar"], which is
+# fine but doesn't let us pin a specific material per appearance state.
 [target.'cfg(target_os = "macos")'.dependencies]
 core-foundation = "0.9"
+window-vibrancy = "0.5"
 
 [dev-dependencies]
 tempfile = "3"
