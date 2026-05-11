@@ -252,6 +252,30 @@
   --press: rgba(255, 255, 255, 0.08);
 }
 
+/* Phase 2.2 (universal sledgehammer for prefers-reduced-motion).
+ * Phase 10.7 (2026-05-11): the same rules also apply when the user
+ * sets the explicit "Reduce motion" toggle in Settings → Accessibility,
+ * which writes data-reduce-motion="1" onto <html>. Both selectors live
+ * side by side so toggling the user override doesn't need a separate
+ * block. */
+:root[data-reduce-motion="1"] {
+  --dur-fast: 0ms;
+  --dur-base: 0ms;
+  --dur-slow: 0ms;
+  --motion-fast: 0ms;
+  --motion: 0ms;
+  --motion-slow: 0ms;
+}
+
+:root[data-reduce-motion="1"] *,
+:root[data-reduce-motion="1"] *::before,
+:root[data-reduce-motion="1"] *::after {
+  animation-duration: 0.01ms !important;
+  animation-iteration-count: 1 !important;
+  transition-duration: 0.01ms !important;
+  scroll-behavior: auto !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   :root {
     --dur-fast: 0ms;
@@ -262,13 +286,6 @@
     --motion-slow: 0ms;
   }
 
-  /* Phase 2.2 (2026-05-11): universal sledgehammer for any rogue CSS that
-   * hardcodes a duration instead of using --motion-*. Pseudo-selectors are
-   * included so ::before / ::after spinners stop too. scroll-behavior is
-   * forced to instant so smooth-scroll-to-anchor doesn't cause vestibular
-   * issues for users on the reduce setting.
-   * WCAG 2.3.3 (Animation from Interactions, AAA — cheap to ship).
-   */
   *, *::before, *::after {
     animation-duration: 0.01ms !important;
     animation-iteration-count: 1 !important;

@@ -30,6 +30,7 @@ import "./Settings.css";
 type Tab =
   | "general"
   | "appearance"
+  | "accessibility"
   | "editor"
   | "terminal"
   | "claude"
@@ -42,23 +43,25 @@ type Tab =
   | "about";
 
 const TAB_ORDER: Tab[] = [
-  "general", "appearance", "editor", "terminal", "claude", "engines",
-  "github", "drive", "vault", "privacy", "updates", "about",
+  "general", "appearance", "accessibility", "editor", "terminal",
+  "claude", "engines", "github", "drive", "vault", "privacy",
+  "updates", "about",
 ];
 
 const LABELS: Record<Tab, string> = {
-  general:    "General",
-  appearance: "Appearance",
-  editor:     "Editor",
-  terminal:   "Terminal",
-  claude:     "Claude AI",
-  engines:    "AI engines",
-  github:     "GitHub",
-  drive:      "Drive",
-  vault:      "Drive lock",
-  privacy:    "Privacy",
-  updates:    "Updates",
-  about:      "About",
+  general:       "General",
+  appearance:    "Appearance",
+  accessibility: "Accessibility",
+  editor:        "Editor",
+  terminal:      "Terminal",
+  claude:        "Claude AI",
+  engines:       "AI engines",
+  github:        "GitHub",
+  drive:         "Drive",
+  vault:         "Drive lock",
+  privacy:       "Privacy",
+  updates:       "Updates",
+  about:         "About",
 };
 
 type GithubAccount = { login: string; avatar_url?: string | null; name?: string | null };
@@ -144,8 +147,9 @@ export function Settings({
 
           <main className="flex-1 min-w-0 overflow-y-auto px-8 py-6 bg-[color:var(--bg-pane)] max-md:px-5 max-md:py-4">
             <TabsContent value="general"   className="!mt-0"><GeneralTab /></TabsContent>
-            <TabsContent value="appearance" className="!mt-0"><AppearanceTab /></TabsContent>
-            <TabsContent value="editor"    className="!mt-0"><EditorTab /></TabsContent>
+            <TabsContent value="appearance"    className="!mt-0"><AppearanceTab /></TabsContent>
+            <TabsContent value="accessibility" className="!mt-0"><AccessibilityTab /></TabsContent>
+            <TabsContent value="editor"        className="!mt-0"><EditorTab /></TabsContent>
             <TabsContent value="terminal"  className="!mt-0"><TerminalTab /></TabsContent>
             <TabsContent value="claude"    className="!mt-0"><ClaudeTab /></TabsContent>
             <TabsContent value="engines"   className="!mt-0"><EnginesTab /></TabsContent>
@@ -192,10 +196,12 @@ function Section({ title, children }: { title?: string; children: React.ReactNod
  * General — name, default shell
  * ============================================================ */
 
+const GENERAL_DEFAULTS = { name: "", default_shell: "bash" };
+
 function GeneralTab() {
   const { driveRoot } = useSession();
-  const [name, setName] = useState("");
-  const [defaultShell, setDefaultShell] = useState("bash");
+  const [name, setName] = useState(GENERAL_DEFAULTS.name);
+  const [defaultShell, setDefaultShell] = useState(GENERAL_DEFAULTS.default_shell);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -222,7 +228,15 @@ function GeneralTab() {
 
   return (
     <TabBody title="General">
-      <FormField label="Your name">
+      <FormField
+        label="Your name"
+        description={
+          <span className="flex items-center justify-between w-full">
+            <span>We&apos;ll use this to personalize your workspace.</span>
+            <span className="text-fg-muted tabular-nums">{name.length}/50</span>
+          </span>
+        }
+      >
         {(props) => (
           <Input
             value={name}
@@ -250,11 +264,14 @@ function GeneralTab() {
         )}
       </FormField>
 
-      <div>
-        <Button variant="primary" onClick={save} loading={saving}>
-          {saving ? "Saving" : "Save"}
-        </Button>
-      </div>
+      <SaveResetRow
+        onSave={save}
+        onReset={() => {
+          setName(GENERAL_DEFAULTS.name);
+          setDefaultShell(GENERAL_DEFAULTS.default_shell);
+        }}
+        saving={saving}
+      />
     </TabBody>
   );
 }
@@ -323,6 +340,91 @@ function AppearanceTab() {
 }
 
 /* ============================================================
+ * Accessibility — Phase 10.7 (2026-05-11). New tab closes Phase
+ * 2.7 (SR-mode toggle for CodeMirror + xterm) and adds a user-level
+ * reduce-motion override. The settings persist to memory/config.toml
+ * under the `accessibility.*` namespace; consumers read the values
+ * on next mount (CodeMirror reinit, xterm reinit). The reduce-motion
+ * override applies a data attribute on <html> immediately.
+ * ============================================================ */
+
+type AccessibilityPrefs = {
+  screen_reader_mode: boolean;
+  reduce_motion: boolean;
+};
+
+function AccessibilityTab() {
+  const { driveRoot } = useSession();
+  const [prefs, setPrefs] = useState<AccessibilityPrefs>({
+    screen_reader_mode: false,
+    reduce_motion: false,
+  });
+  const [saving, setSaving] = useState(false);
+
+  useEffect(() => {
+    void invoke<{ accessibility?: Partial<AccessibilityPrefs> }>("get_config", { driveRoot })
+      .then((cfg) => {
+        if (cfg.accessibility) setPrefs((p) => ({ ...p, ...cfg.accessibility }));
+      })
+      .catch(() => {});
+  }, [driveRoot]);
+
+  // Phase 10.7: apply reduce-motion attr on <html> immediately when the
+  // user toggles. theme.css's @media (prefers-reduced-motion: reduce)
+  // also matches [data-reduce-motion="1"] via the sibling rule below.
+  useEffect(() => {
+    document.documentElement.dataset.reduceMotion = prefs.reduce_motion ? "1" : "0";
+  }, [prefs.reduce_motion]);
+
+  const save = async () => {
+    setSaving(true);
+    try {
+      await invoke("set_config", { driveRoot, patch: { accessibility: prefs } });
+      notify.ok("Accessibility settings saved", "Reopen open files to apply screen-reader mode.");
+    } catch (e) {
+      notify.err("Couldn't save", e);
+    } finally { setSaving(false); }
+  };
+
+  return (
+    <TabBody title="Accessibility">
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+        Arasul targets WCAG 2.2 AA out of the box. These switches override
+        defaults for users who need additional support.
+      </p>
+
+      <ToggleRow
+        label="Optimize for screen readers"
+        checked={prefs.screen_reader_mode}
+        onChange={(v) => setPrefs({ ...prefs, screen_reader_mode: v })}
+      />
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0 -mt-1 ml-9">
+        Enables xterm.js&apos; aria-live screen and CodeMirror&apos;s plain-textarea
+        fallback. Tab will leave the editor instead of inserting a tab character.
+        Reopen any open file for the change to take effect.
+      </p>
+
+      <ToggleRow
+        label="Reduce motion"
+        checked={prefs.reduce_motion}
+        onChange={(v) => setPrefs({ ...prefs, reduce_motion: v })}
+      />
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0 -mt-1 ml-9">
+        Zeros every animation and transition immediately. Honors your system&apos;s
+        &ldquo;Reduce motion&rdquo; pref automatically too — turn this on if you
+        want it forced regardless of OS setting.
+      </p>
+
+      <SaveResetRow
+        onSave={save}
+        onReset={() => setPrefs({ screen_reader_mode: false, reduce_motion: false })}
+        saving={saving}
+      />
+    </TabBody>
+  );
+}
+
+/* ============================================================
  * Editor — font size, line numbers, word wrap (persisted)
  * ============================================================ */
 
@@ -333,14 +435,16 @@ type EditorPrefs = {
   default_view: "split" | "wysiwyg" | "source";
 };
 
+const EDITOR_DEFAULTS: EditorPrefs = {
+  font_size: 14,
+  line_numbers: true,
+  word_wrap: true,
+  default_view: "wysiwyg",
+};
+
 function EditorTab() {
   const { driveRoot } = useSession();
-  const [prefs, setPrefs] = useState<EditorPrefs>({
-    font_size: 14,
-    line_numbers: true,
-    word_wrap: true,
-    default_view: "wysiwyg",
-  });
+  const [prefs, setPrefs] = useState<EditorPrefs>(EDITOR_DEFAULTS);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -405,11 +509,7 @@ function EditorTab() {
         onChange={(v) => setPrefs({ ...prefs, word_wrap: v })}
       />
 
-      <div>
-        <Button variant="primary" onClick={save} loading={saving}>
-          {saving ? "Saving" : "Save"}
-        </Button>
-      </div>
+      <SaveResetRow onSave={save} onReset={() => setPrefs(EDITOR_DEFAULTS)} saving={saving} />
     </TabBody>
   );
 }
@@ -425,11 +525,13 @@ type TerminalPrefs = {
   scrollback: number;
 };
 
+const TERMINAL_DEFAULTS: TerminalPrefs = {
+  font_size: 13, cols: 120, rows: 30, scrollback: 1000,
+};
+
 function TerminalTab() {
   const { driveRoot } = useSession();
-  const [prefs, setPrefs] = useState<TerminalPrefs>({
-    font_size: 13, cols: 120, rows: 30, scrollback: 1000,
-  });
+  const [prefs, setPrefs] = useState<TerminalPrefs>(TERMINAL_DEFAULTS);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -476,16 +578,32 @@ function TerminalTab() {
         Defaults applied to new terminal tabs. Existing tabs stay as they are.
       </p>
 
-      <FormField label="Font size">{() => numberSelect("font_size", [11, 12, 13, 14, 15, 16], "px")}</FormField>
-      <FormField label="Default columns">{() => numberSelect("cols", [80, 100, 120, 140, 160, 200])}</FormField>
-      <FormField label="Default rows">{() => numberSelect("rows", [20, 24, 30, 40, 50])}</FormField>
-      <FormField label="Scrollback (lines)">{() => numberSelect("scrollback", [500, 1000, 2500, 5000, 10000])}</FormField>
+      <FormField
+        label="Font size"
+        description="How big text renders inside the terminal. 13px is the default."
+      >
+        {() => numberSelect("font_size", [11, 12, 13, 14, 15, 16], "px")}
+      </FormField>
+      <FormField
+        label="Default columns"
+        description="Initial width of a new terminal tab. xterm auto-fits when the pane resizes."
+      >
+        {() => numberSelect("cols", [80, 100, 120, 140, 160, 200])}
+      </FormField>
+      <FormField
+        label="Default rows"
+        description="Initial height of a new terminal tab."
+      >
+        {() => numberSelect("rows", [20, 24, 30, 40, 50])}
+      </FormField>
+      <FormField
+        label="Scrollback (lines)"
+        description="Lines of past output the terminal remembers. Larger = more history, slightly more memory."
+      >
+        {() => numberSelect("scrollback", [500, 1000, 2500, 5000, 10000])}
+      </FormField>
 
-      <div>
-        <Button variant="primary" onClick={save} loading={saving}>
-          {saving ? "Saving" : "Save"}
-        </Button>
-      </div>
+      <SaveResetRow onSave={save} onReset={() => setPrefs(TERMINAL_DEFAULTS)} saving={saving} />
     </TabBody>
   );
 }
@@ -533,14 +651,16 @@ const MODEL_LABEL: Record<string, string> = {
   "claude-haiku-4-5-20251001": "Haiku 4.5 — fastest, lowest cost",
 };
 
+const CLAUDE_DEFAULTS: ClaudePrefs = {
+  model: "claude-opus-4-7",
+  temperature: 1.0,
+  system_prompt: "",
+  autonomy: "ask-writes",
+};
+
 function ClaudeTab() {
   const { driveRoot } = useSession();
-  const [prefs, setPrefs] = useState<ClaudePrefs>({
-    model: "claude-opus-4-7",
-    temperature: 1.0,
-    system_prompt: "",
-    autonomy: "ask-writes",
-  });
+  const [prefs, setPrefs] = useState<ClaudePrefs>(CLAUDE_DEFAULTS);
   const [saving, setSaving] = useState(false);
 
   useEffect(() => {
@@ -595,14 +715,23 @@ function ClaudeTab() {
         descriptionPosition="below"
       >
         {(props) => (
-          <input
-            type="range"
-            min={0} max={2} step={0.1}
-            value={prefs.temperature}
-            onChange={(e) => setPrefs({ ...prefs, temperature: Number(e.target.value) })}
-            className="w-full accent-[color:var(--accent)]"
-            {...props}
-          />
+          <div className="flex flex-col gap-1">
+            <input
+              type="range"
+              min={0} max={2} step={0.1}
+              value={prefs.temperature}
+              onChange={(e) => setPrefs({ ...prefs, temperature: Number(e.target.value) })}
+              className="w-full accent-[color:var(--accent)]"
+              {...props}
+            />
+            {/* Phase 10.3: explicit min/max so the slider's range is
+                discoverable. tabular-nums keeps the labels aligned. */}
+            <div className="flex justify-between text-[length:var(--text-caption)] text-fg-muted tabular-nums px-0.5">
+              <span>0.0 · precise</span>
+              <span>1.0 · balanced</span>
+              <span>2.0 · creative</span>
+            </div>
+          </div>
         )}
       </FormField>
 
@@ -650,11 +779,7 @@ function ClaudeTab() {
         )}
       </FormField>
 
-      <div>
-        <Button variant="primary" onClick={save} loading={saving}>
-          {saving ? "Saving" : "Save"}
-        </Button>
-      </div>
+      <SaveResetRow onSave={save} onReset={() => setPrefs(CLAUDE_DEFAULTS)} saving={saving} />
     </TabBody>
   );
 }
@@ -1034,7 +1159,15 @@ function VaultTab() {
         <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
           Automatically lock the drive after this many minutes of inactivity. Useful on shared computers.
         </p>
-        <FormField label="Lock after">
+        <FormField
+          label="Lock after"
+          description={
+            autoLockMin === 0
+              ? "Never locks automatically — the drive only locks when you press ⌘⇧L or eject."
+              : `Locks ${lockOption(autoLockMin).toLowerCase()} after the app stops detecting activity (mouse, keyboard, focus).`
+          }
+          descriptionPosition="below"
+        >
           {(props) => (
             <Select
               value={String(autoLockMin)}
@@ -1213,5 +1346,34 @@ function ToggleRow({
       <Switch checked={checked} onCheckedChange={onChange} />
       <span>{label}</span>
     </label>
+  );
+}
+
+/**
+ * Phase 10.1 (2026-05-11): per-section Save + Reset row. The reset
+ * only reverts the in-memory state to the section's `*_DEFAULTS`
+ * constant — the user still has to press Save to persist. That's
+ * intentional: prevents an accidental click from blowing away saved
+ * config. Reset is rendered as a ghost button so it stays subordinate
+ * to Save.
+ */
+function SaveResetRow({
+  onSave,
+  onReset,
+  saving,
+}: {
+  onSave: () => void | Promise<void>;
+  onReset: () => void;
+  saving: boolean;
+}) {
+  return (
+    <div className="flex items-center gap-2 mt-2">
+      <Button variant="primary" onClick={onSave} loading={saving}>
+        {saving ? "Saving" : "Save"}
+      </Button>
+      <Button variant="ghost" onClick={onReset} disabled={saving}>
+        Reset to defaults
+      </Button>
+    </div>
   );
 }
