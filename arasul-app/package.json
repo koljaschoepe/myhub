@@ -10,7 +10,9 @@
     "tauri": "tauri",
     "ladle": "ladle serve",
     "ladle:build": "ladle build",
-    "bundle:check": "node ../tooling/check-bundle-size.mjs"
+    "bundle:check": "node ../tooling/check-bundle-size.mjs",
+    "css:check": "node ../tooling/check-css-tokens.mjs",
+    "css:check:strict": "node ../tooling/check-css-tokens.mjs --strict"
   },
   "dependencies": {
     "@codemirror/lang-css": "^6.3.1",

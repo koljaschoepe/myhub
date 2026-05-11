@@ -1,3 +1,4 @@
+import type React from "react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import {
@@ -82,6 +83,37 @@ const MIN_VISIBLE_COLS = 12;
 const MIN_VISIBLE_ROWS = 50;
 const DEFAULT_COL_WIDTH = 140;
 
+// Phase 6.9 (2026-05-11): per-column width + freeze-first-column state is
+// scoped per (file, sheet) and lives in localStorage so muscle-memory
+// survives tab-close / restart. Key shape kept simple — workbooks at
+// different paths never collide. Tolerant to corrupt JSON via try/catch.
+type SheetColsState = { widths: Record<string, number>; freezeFirst: boolean };
+const SHEET_COLS_PREFIX = "arasul.sheet-cols";
+function sheetColsKey(filePath: string, sheet: string): string {
+  return `${SHEET_COLS_PREFIX}:${filePath}::${sheet}`;
+}
+function loadSheetCols(filePath: string, sheet: string): SheetColsState {
+  try {
+    const raw = localStorage.getItem(sheetColsKey(filePath, sheet));
+    if (!raw) return { widths: {}, freezeFirst: false };
+    const parsed = JSON.parse(raw) as Partial<SheetColsState>;
+    return {
+      widths: (parsed.widths && typeof parsed.widths === "object") ? parsed.widths : {},
+      freezeFirst: !!parsed.freezeFirst,
+    };
+  } catch {
+    return { widths: {}, freezeFirst: false };
+  }
+}
+function saveSheetCols(filePath: string, sheet: string, state: SheetColsState): void {
+  try {
+    localStorage.setItem(sheetColsKey(filePath, sheet), JSON.stringify(state));
+  } catch {
+    // Quota or private-mode failures aren't worth surfacing — the grid
+    // still works, the widths just don't persist this session.
+  }
+}
+
 export function SpreadsheetEditor({ filePath }: Props) {
   const editorRef = useRef<DataEditorRef>(null);
   const [handle, setHandle] = useState<string | null>(null);
@@ -103,6 +135,18 @@ export function SpreadsheetEditor({ filePath }: Props) {
   // value Y" message via the onGridSelectionChange callback.
   const [a11yAnnouncement, setA11yAnnouncement] = useState("");
   const lastAnnouncedRef = useRef<string>("");
+
+  // Phase 6.9 (2026-05-11): per-column widths + freeze-first-column,
+  // persisted per (file, sheet) so users keep their layout across reloads.
+  const [colWidths, setColWidths] = useState<Record<string, number>>({});
+  const [freezeFirst, setFreezeFirst] = useState(false);
+
+  // Phase 6.11 (2026-05-11): track the selected cell so the formula bar
+  // above the grid can show its reference + formula / value, and accept
+  // edits that round-trip through the same write path as overlay edits.
+  const [selectedCell, setSelectedCell] = useState<[number, number] | null>(null);
+  const [formulaDraft, setFormulaDraft] = useState<string>("");
+  const formulaInputRef = useRef<HTMLInputElement | null>(null);
 
   // Open the workbook on mount; close on unmount.
   useEffect(() => {
@@ -160,6 +204,19 @@ export function SpreadsheetEditor({ filePath }: Props) {
     })();
     return () => { cancelled = true; };
   }, [handle, activeSheet]);
+
+  // Phase 6.9: hydrate per-sheet column layout from localStorage whenever
+  // the (file, sheet) pair changes. Default to empty widths + no freeze.
+  useEffect(() => {
+    if (!activeSheet) {
+      setColWidths({});
+      setFreezeFirst(false);
+      return;
+    }
+    const state = loadSheetCols(filePath, activeSheet);
+    setColWidths(state.widths);
+    setFreezeFirst(state.freezeFirst);
+  }, [filePath, activeSheet]);
 
   // ---------------- Save path ----------------
 
@@ -310,13 +367,45 @@ export function SpreadsheetEditor({ filePath }: Props) {
   const visibleCols = Math.max(grid?.max_col ?? 0, MIN_VISIBLE_COLS);
   const visibleRows = Math.max(grid?.max_row ?? 0, MIN_VISIBLE_ROWS);
 
-  // Precompute formula display values once per grid change. Linear in
-  // formula count — fine for personal-scale sheets. Re-runs when any cell
-  // changes (`grid` is a fresh object after every edit). Keyed by
-  // "row,col" rather than by ref because edits can shrink/grow the grid.
+  // Phase 6.10 (2026-05-11): formula evaluation cache, keyed by a stable
+  // fingerprint of the entire grid's cell values. Re-uses prior results
+  // when no input cell has changed since the last run — typical case
+  // after a cosmetic edit (selection move) or non-formula cell edit
+  // whose change doesn't propagate. Trade-off: fingerprint is O(cells)
+  // and the recompute is also O(formulas), so the win is in the no-
+  // formula-input-touched case where we replay the prior Map.
+  //
+  // Linear in cell count for personal-scale sheets — fine. A real
+  // dependency graph (cell-deps tracking) is out of scope for v1.
+  const prevFingerprintRef = useRef<string>("");
+  const prevFormulaEvalsRef = useRef<Map<string, string>>(new Map());
+
   const formulaEvals = useMemo<Map<string, string>>(() => {
+    if (!grid) return new Map();
+    // Fast fingerprint: only includes cells that could affect evaluation
+    // (values + formula text). Skipping empties keeps it cheap on sparse
+    // grids. Hand-rolled join for stable ordering without sort cost.
+    const parts: string[] = [];
+    for (let r = 0; r < grid.rows.length; r++) {
+      const row = grid.rows[r];
+      for (let c = 0; c < row.length; c++) {
+        const cell = row[c];
+        if (!cell || cell.value.kind === "empty") continue;
+        const v = cell.value;
+        const tag =
+          v.kind === "number" ? `n${v.v}` :
+          v.kind === "text" ? `t${v.v}` :
+          v.kind === "bool" ? `b${v.v ? 1 : 0}` :
+          v.kind === "date" ? `d${v.v}` :
+          v.kind === "error" ? `e${v.v}` : "?";
+        parts.push(`${r},${c}:${tag}:${cell.formula ?? ""}`);
+      }
+    }
+    const fingerprint = parts.join("|");
+    if (fingerprint === prevFingerprintRef.current) {
+      return prevFormulaEvalsRef.current;
+    }
     const map = new Map<string, string>();
-    if (!grid) return map;
     const ctx: EvalContext = {
       getCell(row, col) {
         const j = grid.rows[row]?.[col];
@@ -333,16 +422,47 @@ export function SpreadsheetEditor({ filePath }: Props) {
         map.set(`${r},${c}`, resultToDisplay(result));
       }
     }
+    prevFingerprintRef.current = fingerprint;
+    prevFormulaEvalsRef.current = map;
     return map;
   }, [grid]);
 
   const columns = useMemo<GridColumn[]>(() => {
-    return Array.from({ length: visibleCols }, (_, i) => ({
-      title: colName(i),
-      width: DEFAULT_COL_WIDTH,
-      id: colName(i),
-    }));
-  }, [visibleCols]);
+    return Array.from({ length: visibleCols }, (_, i) => {
+      const id = colName(i);
+      return {
+        title: id,
+        id,
+        width: colWidths[id] ?? DEFAULT_COL_WIDTH,
+      };
+    });
+  }, [visibleCols, colWidths]);
+
+  // Phase 6.9: persist column width on drag-end. glide-data-grid calls
+  // this with the new size as we drag; localStorage write is cheap but
+  // we only commit when the user lets go to avoid hammering quota on
+  // every pointer event. The `newSize` arg is the final pixel width.
+  const onColumnResize = useCallback(
+    (column: GridColumn, newSize: number) => {
+      const id = column.id ?? column.title;
+      if (!id || !activeSheet) return;
+      setColWidths((cur) => {
+        const next = { ...cur, [id]: Math.max(40, Math.round(newSize)) };
+        saveSheetCols(filePath, activeSheet, { widths: next, freezeFirst });
+        return next;
+      });
+    },
+    [activeSheet, filePath, freezeFirst],
+  );
+
+  const toggleFreezeFirst = useCallback(() => {
+    if (!activeSheet) return;
+    setFreezeFirst((cur) => {
+      const next = !cur;
+      saveSheetCols(filePath, activeSheet, { widths: colWidths, freezeFirst: next });
+      return next;
+    });
+  }, [activeSheet, colWidths, filePath]);
 
   const getCellContent = useCallback(
     (cell: Item): GridCell => {
@@ -413,10 +533,15 @@ export function SpreadsheetEditor({ filePath }: Props) {
   // Phase 2.8: emit SR-friendly announcement when the active cell moves.
   // glide-data-grid's canvas means SR's don't see cell focus via the DOM
   // tree — this aria-live region is the only way they hear cell moves.
+  // Phase 6.11 (2026-05-11): also feeds the formula bar above the grid
+  // — same source of truth, no risk of drift between the two surfaces.
   const onGridSelection = useCallback(
     (sel: GridSelection) => {
       const c = sel.current?.cell;
-      if (!c) return;
+      if (!c) {
+        setSelectedCell(null);
+        return;
+      }
       const [col, row] = c;
       const cell = getCellContent([col, row]);
       const value =
@@ -424,12 +549,69 @@ export function SpreadsheetEditor({ filePath }: Props) {
         ("data" in cell && cell.data != null && String(cell.data)) ||
         "empty";
       const msg = `Row ${row + 1} of ${visibleRows}, column ${colName(col)}, ${value}`;
-      if (msg === lastAnnouncedRef.current) return;
-      lastAnnouncedRef.current = msg;
-      setA11yAnnouncement(msg);
+      if (msg !== lastAnnouncedRef.current) {
+        lastAnnouncedRef.current = msg;
+        setA11yAnnouncement(msg);
+      }
+      // Update formula bar — show the formula text verbatim when one
+      // exists, otherwise the raw value. The bar stays out of sync with
+      // overlay-edits-in-progress on purpose: typing in the overlay then
+      // pressing Enter commits, which re-fires getCellContent below.
+      setSelectedCell([col, row]);
+      const j = grid?.rows[row]?.[col];
+      if (!j || j.value.kind === "empty") {
+        setFormulaDraft("");
+      } else if (j.formula) {
+        setFormulaDraft(`=${j.formula}`);
+      } else {
+        setFormulaDraft(cellToText(j));
+      }
     },
-    [getCellContent, visibleRows],
+    [getCellContent, grid, visibleRows],
   );
+
+  // Phase 6.11: commit the formula bar value via the same write path
+  // overlay edits use. Reuses onCellEdited's edit semantics so the
+  // dirty/save status, optimistic UI update, and formula handling all
+  // stay identical between the two entry points.
+  const commitFormulaBar = useCallback(() => {
+    if (!selectedCell) return;
+    const [col, row] = selectedCell;
+    const trimmed = formulaDraft;
+    onCellEdited([col, row], {
+      kind: GridCellKind.Text,
+      data: trimmed,
+      displayData: trimmed,
+      allowOverlay: true,
+    });
+    // Bounce focus back to the grid so arrow keys work afterwards.
+    editorRef.current?.focus();
+  }, [formulaDraft, onCellEdited, selectedCell]);
+
+  const onFormulaBarKey = useCallback(
+    (e: React.KeyboardEvent<HTMLInputElement>) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        commitFormulaBar();
+      } else if (e.key === "Escape") {
+        e.preventDefault();
+        // Revert to whatever the cell currently holds.
+        if (selectedCell) {
+          const [col, row] = selectedCell;
+          const j = grid?.rows[row]?.[col];
+          if (!j || j.value.kind === "empty") setFormulaDraft("");
+          else if (j.formula) setFormulaDraft(`=${j.formula}`);
+          else setFormulaDraft(cellToText(j));
+        }
+        editorRef.current?.focus();
+      }
+    },
+    [commitFormulaBar, grid, selectedCell],
+  );
+
+  const selectedRef = selectedCell
+    ? `${colName(selectedCell[0])}${selectedCell[1] + 1}`
+    : "";
 
   return (
     <div
@@ -441,12 +623,39 @@ export function SpreadsheetEditor({ filePath }: Props) {
           : "Spreadsheet"
       }
     >
+      {/* Phase 6.11 (2026-05-11): dedicated formula bar above the grid.
+          The left chip shows the active cell reference (A1 notation); the
+          input edits the formula or raw value. Enter commits via the same
+          write path as overlay edits; Escape reverts. */}
+      <div className="arasul-sheet-formula-bar">
+        <span
+          className="arasul-sheet-formula-ref"
+          aria-label="Selected cell reference"
+        >
+          {selectedRef || "—"}
+        </span>
+        <span className="arasul-sheet-formula-fx" aria-hidden="true">ƒx</span>
+        <input
+          ref={formulaInputRef}
+          type="text"
+          className="arasul-sheet-formula-input"
+          value={formulaDraft}
+          onChange={(e) => setFormulaDraft(e.target.value)}
+          onKeyDown={onFormulaBarKey}
+          spellCheck={false}
+          autoComplete="off"
+          placeholder={selectedCell ? "Enter a value or =formula" : "Select a cell"}
+          disabled={!selectedCell}
+          aria-label="Formula or value for the selected cell"
+        />
+      </div>
       <div className="arasul-sheet-grid">
         <DataEditor
           ref={editorRef}
           getCellContent={getCellContent}
           onCellEdited={onCellEdited}
           onGridSelectionChange={onGridSelection}
+          onColumnResize={onColumnResize}
           columns={columns}
           rows={visibleRows}
           width="100%"
@@ -454,6 +663,7 @@ export function SpreadsheetEditor({ filePath }: Props) {
           rowMarkers="number"
           smoothScrollX
           smoothScrollY
+          freezeColumns={freezeFirst ? 1 : 0}
           theme={SHEET_THEME}
         />
         {/* Phase 2.8: SR cell-move announcer. Read by AT, invisible on
@@ -500,6 +710,20 @@ export function SpreadsheetEditor({ filePath }: Props) {
               {s.name}
             </button>
           ))}
+          {/* Phase 6.9 (2026-05-11): freeze-first-column toggle. Persists
+              per (file, sheet) so the user's freeze choice survives reloads.
+              Width settings persist on drag-resize via onColumnResize. */}
+          <button
+            type="button"
+            className={
+              "arasul-sheet-freeze" + (freezeFirst ? " active" : "")
+            }
+            onClick={toggleFreezeFirst}
+            aria-pressed={freezeFirst}
+            title={freezeFirst ? "Unfreeze first column" : "Freeze first column"}
+          >
+            {freezeFirst ? "❄ Frozen" : "❄ Freeze"}
+          </button>
           <span className={"arasul-sheet-status arasul-sheet-status-" + status}>
             {status === "saving" ? "saving…" :
              status === "saved" ? "saved" :

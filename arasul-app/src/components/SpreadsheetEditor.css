@@ -17,6 +17,63 @@
   position: relative;
 }
 
+/* Phase 6.11 (2026-05-11): formula bar above the grid. Excel/Sheets convention
+ * — left chip shows the active cell reference (A1), then ƒx glyph, then a
+ * full-width input bound to the cell's formula or value. Enter commits, Esc
+ * reverts. Same write path as overlay edits, so behaviour stays unified. */
+.arasul-sheet-formula-bar {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-1) var(--sp-2);
+  background: var(--bg-elevated);
+  border-bottom: 1px solid var(--border-subtle);
+  min-height: 30px;
+}
+.arasul-sheet-formula-ref {
+  flex-shrink: 0;
+  min-width: 56px;
+  padding: 2px 8px;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-primary);
+  background: var(--bg-canvas);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+}
+.arasul-sheet-formula-fx {
+  flex-shrink: 0;
+  font-family: var(--font-mono);
+  font-size: var(--fs-xs);
+  color: var(--text-tertiary);
+  font-style: italic;
+  user-select: none;
+}
+.arasul-sheet-formula-input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px;
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-family: var(--font-mono);
+  font-size: var(--fs-sm);
+}
+.arasul-sheet-formula-input:focus {
+  outline: none;
+  border-color: var(--accent);
+  box-shadow: 0 0 0 1px var(--accent-border);
+}
+.arasul-sheet-formula-input:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
 .arasul-sheet-tabs {
   flex-shrink: 0;
   display: flex;
@@ -100,3 +157,27 @@
   cursor: pointer;
 }
 .arasul-sheet-picker:hover { color: var(--text-primary); }
+
+/* Phase 6.9 (2026-05-11): freeze-first-column toggle button. Sits to the
+ * right of the tab strip, before the save-status indicator. Uses an
+ * aria-pressed state to communicate the toggle to screen readers. */
+.arasul-sheet-freeze {
+  flex-shrink: 0;
+  height: 22px;
+  padding: 0 8px;
+  margin-left: 6px;
+  background: transparent;
+  color: var(--text-tertiary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  font-variant-numeric: tabular-nums;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-sheet-freeze:hover { color: var(--text-primary); background: var(--hover); }
+.arasul-sheet-freeze.active {
+  color: var(--accent);
+  border-color: var(--accent-border);
+  background: var(--accent-tint);
+}
