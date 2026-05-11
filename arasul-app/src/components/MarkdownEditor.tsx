@@ -231,6 +231,45 @@ export function MarkdownEditor({ filePath }: Props) {
     };
   }, [filePath]);
 
+  // Phase 5.6 (2026-05-11): listen for jump-to-line events from
+  // SearchPanel hits. Coerce the 1-based line number into a ProseMirror
+  // doc-position by walking the doc's children (each block contributes
+  // its own range). For source mode (CodeMirror), CM's own search keymap
+  // jumps natively; we skip there.
+  useEffect(() => {
+    if (!editor) return;
+    const onJump = (e: Event) => {
+      const detail = (e as CustomEvent<{ path: string; line: number }>).detail;
+      if (!detail || detail.path !== filePath) return;
+      // Source mode lets CodeMirror handle find; jump only in WYSIWYG.
+      if (sourceModeRef.current) return;
+      const targetLine = Math.max(1, detail.line);
+      let pos = 0;
+      let line = 1;
+      editor.state.doc.descendants((node, nodePos) => {
+        if (line >= targetLine) return false;
+        if (node.isBlock && node.type.name !== "doc") {
+          // Each block-level node contributes one "visual line" for our
+          // coarse counter. Inline newlines inside paragraphs aren't
+          // tracked — ripgrep's line numbers are byte/newline counts, so
+          // this is approximate. Best-effort.
+          line += 1;
+          pos = nodePos + 1;
+        }
+        return true;
+      });
+      try {
+        editor.commands.focus();
+        editor.commands.setTextSelection(pos);
+        const dom = editor.view.domAtPos(pos).node as HTMLElement | null;
+        const el = dom?.nodeType === 1 ? dom : dom?.parentElement;
+        el?.scrollIntoView({ behavior: "smooth", block: "start" });
+      } catch { /* domAtPos can throw on stale positions — ignore */ }
+    };
+    window.addEventListener("arasul:jump-to-line", onJump);
+    return () => window.removeEventListener("arasul:jump-to-line", onJump);
+  }, [editor, filePath]);
+
   // Phase 6.4: extract heading hierarchy from the doc on every update
   // (debounced). The result feeds the outline panel.
   useEffect(() => {

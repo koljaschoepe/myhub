@@ -80,6 +80,7 @@ dependencies = [
  "core-foundation 0.9.4",
  "glob",
  "ignore",
+ "libc",
  "parking_lot",
  "portable-pty",
  "rand 0.8.6",

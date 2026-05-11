@@ -86,6 +86,12 @@ rusqlite = { version = "0.32", features = ["bundled"] }   # workflow run persist
 core-foundation = "0.9"
 window-vibrancy = "0.5"
 
+# Phase 9.8 (2026-05-11): libc for the SIGTERM-grace kill path on Unix.
+# pty.rs's pty_kill uses libc::kill to issue a polite SIGTERM before
+# falling back to portable-pty's SIGKILL. Linux + macOS only.
+[target.'cfg(unix)'.dependencies]
+libc = "0.2"
+
 [dev-dependencies]
 tempfile = "3"
 

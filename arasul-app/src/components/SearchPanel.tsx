@@ -149,7 +149,22 @@ export function SearchPanel({ open, onClose }: Props) {
                   <button
                     key={i}
                     className="arasul-search-hit"
-                    onClick={() => { openFile(path); onClose(); }}
+                    onClick={() => {
+                      openFile(path);
+                      onClose();
+                      // Phase 5.6 (2026-05-11): emit jump-to-line event
+                      // so editors can scroll to the matching line. Fired
+                      // after openFile so the editor has time to mount;
+                      // a small delay lets the Tiptap/CodeMirror layout
+                      // settle before the scroll target is queried.
+                      window.setTimeout(() => {
+                        window.dispatchEvent(
+                          new CustomEvent("arasul:jump-to-line", {
+                            detail: { path, line: hit.line, col: hit.col },
+                          }),
+                        );
+                      }, 150);
+                    }}
                   >
                     <span className="arasul-search-hit-line">{hit.line}</span>
                     <span className="arasul-search-hit-text">{hit.text}</span>

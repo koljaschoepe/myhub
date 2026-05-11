@@ -469,6 +469,26 @@ export function SpreadsheetEditor({ filePath }: Props) {
       </div>
       {sheets.length > 0 && (
         <nav className="arasul-sheet-tabs" aria-label="Workbook sheets">
+          {/* Phase 6.12 (2026-05-11): when there are many sheets, the
+              tab strip would scroll horizontally past the visible area.
+              Show a `<select>` dropdown alongside the strip so users
+              can jump-pick from any sheet without scrolling. The strip
+              itself stays so power-users keep their muscle memory. */}
+          {sheets.length > 10 && (
+            <select
+              className="arasul-sheet-picker"
+              value={activeSheet ?? ""}
+              onChange={(e) => setActiveSheet(e.target.value)}
+              aria-label="Jump to sheet"
+              title="Jump to sheet"
+            >
+              {sheets.map((s) => (
+                <option key={s.name} value={s.name}>
+                  {s.name} · {s.rows}×{s.cols}
+                </option>
+              ))}
+            </select>
+          )}
           {sheets.map((s) => (
             <button
               type="button"

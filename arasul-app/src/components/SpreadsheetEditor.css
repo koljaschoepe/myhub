@@ -83,3 +83,20 @@
   font-size: var(--fs-xs);
   color: var(--text-secondary);
 }
+
+/* Phase 6.12: jump-to-sheet dropdown for 10+ sheet workbooks. Sits in
+ * the same row as the tab strip; visually subordinate (border-less,
+ * matches the tab text style). */
+.arasul-sheet-picker {
+  flex-shrink: 0;
+  height: 22px;
+  padding: 0 6px;
+  margin-right: 6px;
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-sm);
+  font-size: var(--fs-xs);
+  cursor: pointer;
+}
+.arasul-sheet-picker:hover { color: var(--text-primary); }

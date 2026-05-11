@@ -230,12 +230,50 @@ pub fn pty_resize(
     Ok(())
 }
 
+/// Phase 9.8 (2026-05-11): graceful kill with grace window before SIGKILL.
+///
+/// `portable_pty::Child::kill()` is documented to behave like
+/// `Command::kill` — i.e. on Unix it issues a SIGKILL outright, which
+/// gives the child no chance to flush buffers, save respawn-marker
+/// state, or clean up its tmp files. To behave nicely with the
+/// myhub-tui respawn loop (which writes `.boot/.respawn` on every
+/// `/claude` exec-replace and expects to remove it cleanly on quit),
+/// we:
+///   1. Try a polite SIGTERM via libc::kill on the child's PID.
+///   2. Wait up to 2 seconds for the child to exit on its own.
+///   3. If it's still alive, fall back to portable_pty's SIGKILL.
+///   4. Always clear the stale `.boot/.respawn` marker we may have
+///      written, so a bad close doesn't loop the launcher.
 #[tauri::command]
 pub fn pty_kill(state: State<'_, PtyState>, id: String) -> Result<()> {
     let mut guard = state.inner.lock();
-    if let Some(handle) = guard.remove(&id) {
-        let mut c = handle.child.lock();
-        let _ = c.kill();
+    let Some(handle) = guard.remove(&id) else { return Ok(()); };
+
+    // Step 1 — polite SIGTERM (Unix only; on Windows portable-pty's
+    // kill is the only option anyway).
+    #[cfg(unix)]
+    if let Some(pid) = handle.child.lock().process_id() {
+        // SAFETY: libc::kill is a thin syscall wrapper; pid was just
+        // read from a live Child, so it's valid until the next reap.
+        unsafe { libc::kill(pid as libc::pid_t, libc::SIGTERM); }
+    }
+
+    // Step 2 — wait up to 2s for the child to exit on its own. We poll
+    // try_wait every 100ms so a fast exit isn't blocked by a full 2s
+    // sleep.
+    let deadline = std::time::Instant::now() + std::time::Duration::from_secs(2);
+    let mut exited = false;
+    while std::time::Instant::now() < deadline {
+        if let Ok(Some(_)) = handle.child.lock().try_wait() {
+            exited = true;
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(100));
+    }
+
+    // Step 3 — SIGKILL fallback.
+    if !exited {
+        let _ = handle.child.lock().kill();
     }
     Ok(())
 }
