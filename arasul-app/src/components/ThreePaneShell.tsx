@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Group, Panel, Separator } from "react-resizable-panels";
+import { Group, Panel, Separator, useDefaultLayout } from "react-resizable-panels";
 import { FolderTree, FileText, Terminal as TerminalIcon } from "lucide-react";
 import { LeftPane } from "./LeftPane";
 import { EditorPane } from "./EditorPane";
@@ -25,8 +25,22 @@ export function ThreePaneShell() {
 }
 
 function FullShell() {
+  // Phase 3.7: persist pane widths across reloads via the library's
+  // useDefaultLayout hook (defaults to localStorage). Keyed by the
+  // group id, so the medium/compact variants don't collide.
+  // Phase 3.8: double-click a Separator → react-resizable-panels resets
+  // to the saved defaultLayout (library built-in; no extra wiring needed).
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: "arasul.shell.full.v2",
+  });
   return (
-    <Group orientation="horizontal" className="arasul-shell" id="arasul.shell.full.v2">
+    <Group
+      orientation="horizontal"
+      className="arasul-shell"
+      id="arasul.shell.full.v2"
+      defaultLayout={defaultLayout}
+      onLayoutChanged={onLayoutChanged}
+    >
       <Panel defaultSize="20%" minSize="14%" maxSize="32%" className="arasul-pane arasul-pane-tree">
         <LeftPane />
       </Panel>
@@ -63,16 +77,31 @@ function MediumShell() {
           </div>
         </div>
       )}
-      <Group orientation="horizontal" className="arasul-shell-inner" id="arasul.shell.medium.v2">
-        <Panel defaultSize="60%" minSize="35%" className="arasul-pane arasul-pane-editor">
-          <EditorPane />
-        </Panel>
-        <Separator className="arasul-resize" />
-        <Panel defaultSize="40%" minSize="25%" maxSize="55%" className="arasul-pane arasul-pane-right">
-          <RightPane />
-        </Panel>
-      </Group>
+      <MediumGroup />
     </div>
+  );
+}
+
+function MediumGroup() {
+  const { defaultLayout, onLayoutChanged } = useDefaultLayout({
+    id: "arasul.shell.medium.v2",
+  });
+  return (
+    <Group
+      orientation="horizontal"
+      className="arasul-shell-inner"
+      id="arasul.shell.medium.v2"
+      defaultLayout={defaultLayout}
+      onLayoutChanged={onLayoutChanged}
+    >
+      <Panel defaultSize="60%" minSize="35%" className="arasul-pane arasul-pane-editor">
+        <EditorPane />
+      </Panel>
+      <Separator className="arasul-resize" />
+      <Panel defaultSize="40%" minSize="25%" maxSize="55%" className="arasul-pane arasul-pane-right">
+        <RightPane />
+      </Panel>
+    </Group>
   );
 }
 

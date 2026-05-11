@@ -73,6 +73,66 @@
   font-weight: var(--fw-medium);
   transition: background var(--motion-fast), color var(--motion-fast);
 }
+
+/* Phase 3.12: "Local" trust pill + popover. */
+.arasul-local-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  min-height: 24px;
+  padding: 4px 10px;
+  background: var(--success-soft);
+  color: var(--success);
+  border: 0;
+  border-radius: 999px;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+.arasul-local-pill:hover {
+  background: color-mix(in srgb, var(--success) 20%, transparent);
+}
+
+.arasul-local-popover {
+  z-index: var(--z-modal-default);
+  max-width: 360px;
+  padding: var(--space-5);
+  background: var(--bg-elevated);
+  color: var(--text-primary);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius-lg);
+  box-shadow: var(--elev-3);
+  font-size: var(--text-body-sm);
+  line-height: var(--leading-body);
+  animation: cmdk-fade var(--motion-fast);
+}
+.arasul-local-popover h4 {
+  margin: 0 0 var(--space-3);
+  font-size: var(--text-body);
+  font-weight: var(--fw-semibold);
+  color: var(--text-primary);
+}
+.arasul-local-popover p {
+  margin: 0 0 var(--space-3);
+  color: var(--text-secondary);
+}
+.arasul-local-popover-muted {
+  color: var(--text-muted);
+}
+.arasul-local-popover-link {
+  display: inline-block;
+  margin-top: var(--space-2);
+  padding: 0;
+  background: transparent;
+  border: 0;
+  color: var(--accent);
+  font: inherit;
+  font-weight: var(--fw-medium);
+  cursor: pointer;
+}
+.arasul-local-popover-link:hover { text-decoration: underline; }
+.arasul-local-popover-arrow { fill: var(--bg-elevated); }
 .arasul-update-pill:hover {
   background: var(--accent);
   color: var(--text-on-accent);

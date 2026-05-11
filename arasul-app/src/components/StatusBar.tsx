@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { GitBranch, ArrowUp, ArrowDown, Pencil, Lock } from "lucide-react";
+import { GitBranch, ArrowUp, ArrowDown, Pencil, Lock, HelpCircle } from "lucide-react";
 import { useSession } from "../lib/session";
 import { useWorkspace } from "../lib/workspace";
 import { notify } from "../lib/toast";
@@ -136,6 +136,19 @@ export function StatusBar() {
         </button>
         <span className="arasul-status-sep">·</span>
         <span>{project}</span>
+        <span className="arasul-status-sep">·</span>
+        {/* Phase 3.10: persistent help button. Stays visible at every
+            breakpoint, including <900px where the hint row above hides.
+            Single source of truth for "where are the shortcuts?". */}
+        <button
+          type="button"
+          className="arasul-status-clickable"
+          onClick={() => fire("/", { meta: true })}
+          title="Keyboard shortcuts (⌘/)"
+          aria-label="Show keyboard shortcuts"
+        >
+          <HelpCircle size={12} aria-hidden="true" />
+        </button>
       </span>
     </footer>
   );

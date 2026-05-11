@@ -1,10 +1,11 @@
 import { useEffect, useState, useCallback } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ArrowUpRight, GitBranch, Upload, Check, AlertCircle, Settings as SettingsIcon } from "lucide-react";
+import { ArrowUpRight, GitBranch, Upload, Check, AlertCircle, Settings as SettingsIcon, ShieldCheck } from "lucide-react";
 import { useSession } from "../lib/session";
 import { useWorkspace } from "../lib/workspace";
 import { useGithubStatus } from "../hooks/useGithubStatus";
 import { notify } from "../lib/toast";
+import * as Popover from "@radix-ui/react-popover";
 import "./TopBar.css";
 
 type UpdateInfo = {
@@ -127,6 +128,7 @@ export function TopBar({ onOpenSettings }: Props = {}) {
       >
         <SettingsIcon size={14} />
       </button>
+      <LocalTrustPill />
       <span className="arasul-briefer" title={briefer}>{briefer}</span>
 
       {showGitControls && gh && (
@@ -189,5 +191,63 @@ function GitStatusPill({ status }: { status: { dirty: number; ahead: number; beh
       {behind > 0 ? <AlertCircle size={11} /> : null}
       <span>{parts.join(" · ")}</span>
     </span>
+  );
+}
+
+/**
+ * Phase 3.12 (2026-05-11) — "Local" trust pill.
+ *
+ * Arc-browser pattern: a small pill that signals the privacy posture
+ * at a glance. Click opens a Radix Popover explaining what "local"
+ * actually means here, with a link into Settings → Privacy for the
+ * deeper detail. Non-coders shouldn't have to read docs to learn that
+ * their drafts aren't going to a server.
+ */
+function LocalTrustPill() {
+  return (
+    <Popover.Root>
+      <Popover.Trigger asChild>
+        <button
+          type="button"
+          className="arasul-local-pill"
+          aria-label="Local-first — your data stays on this drive"
+          title="Local-first"
+        >
+          <ShieldCheck size={11} aria-hidden="true" />
+          <span>Local</span>
+        </button>
+      </Popover.Trigger>
+      <Popover.Portal>
+        <Popover.Content
+          side="bottom"
+          align="start"
+          sideOffset={6}
+          className="arasul-local-popover"
+        >
+          <h4>Your notes never leave this drive.</h4>
+          <p>
+            Arasul writes everything you do — files, settings, chat
+            history — to the USB-C SSD in your hand. There are no Arasul
+            servers, no telemetry, no analytics.
+          </p>
+          <p className="arasul-local-popover-muted">
+            The only network requests are: (1) Claude prompts when you
+            ask the assistant, going directly to api.anthropic.com on
+            your own subscription; (2) update checks against GitHub
+            Releases; (3) GitHub push/pull when you click Push.
+          </p>
+          <button
+            type="button"
+            className="arasul-local-popover-link"
+            onClick={() => window.dispatchEvent(
+              new CustomEvent("arasul:open-settings", { detail: { tab: "privacy" } }),
+            )}
+          >
+            More in Privacy settings →
+          </button>
+          <Popover.Arrow className="arasul-local-popover-arrow" />
+        </Popover.Content>
+      </Popover.Portal>
+    </Popover.Root>
   );
 }
