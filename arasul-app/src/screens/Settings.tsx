@@ -24,6 +24,7 @@ import {
   FormField,
   Badge,
 } from "../components/ui";
+import { ProviderPicker } from "../components/ProviderPicker";
 import "./Settings.css";
 
 type Tab =
@@ -32,6 +33,7 @@ type Tab =
   | "editor"
   | "terminal"
   | "claude"
+  | "engines"
   | "github"
   | "drive"
   | "vault"
@@ -40,7 +42,7 @@ type Tab =
   | "about";
 
 const TAB_ORDER: Tab[] = [
-  "general", "appearance", "editor", "terminal", "claude",
+  "general", "appearance", "editor", "terminal", "claude", "engines",
   "github", "drive", "vault", "privacy", "updates", "about",
 ];
 
@@ -50,6 +52,7 @@ const LABELS: Record<Tab, string> = {
   editor:     "Editor",
   terminal:   "Terminal",
   claude:     "Claude AI",
+  engines:    "AI engines",
   github:     "GitHub",
   drive:      "Drive",
   vault:      "Drive lock",
@@ -145,6 +148,7 @@ export function Settings({
             <TabsContent value="editor"    className="!mt-0"><EditorTab /></TabsContent>
             <TabsContent value="terminal"  className="!mt-0"><TerminalTab /></TabsContent>
             <TabsContent value="claude"    className="!mt-0"><ClaudeTab /></TabsContent>
+            <TabsContent value="engines"   className="!mt-0"><EnginesTab /></TabsContent>
             <TabsContent value="github"    className="!mt-0"><GithubTab /></TabsContent>
             <TabsContent value="drive"     className="!mt-0"><DriveTab /></TabsContent>
             <TabsContent value="vault"     className="!mt-0"><VaultTab /></TabsContent>
@@ -490,10 +494,37 @@ function TerminalTab() {
  * Claude AI — model, temperature, system prompt (persisted)
  * ============================================================ */
 
+/**
+ * Phase 8.9 (2026-05-11): Autonomy — three-stop slider for how much
+ * confirmation the AI asks for before doing things.
+ *   "ask-all"   → Confirm every action including reads.
+ *   "ask-writes"→ Default: confirm only when modifying files.
+ *   "auto"      → "Just do it" — no confirmation. Useful for trusted
+ *                 short tasks; the user keeps Undo via Action timeline
+ *                 (Phase 8.8, deferred).
+ * The setting persists to memory/config.toml and is consumed by the
+ * workflow runner and (soon) the ChatPane. Wiring the consumers up
+ * lands with the ChatPane in Phase 8.2.
+ */
+type AutonomyLevel = "ask-all" | "ask-writes" | "auto";
+
+const AUTONOMY_LABEL: Record<AutonomyLevel, string> = {
+  "ask-all":    "Ask before everything",
+  "ask-writes": "Ask before writing files",
+  "auto":       "Just do it",
+};
+
+const AUTONOMY_DESC: Record<AutonomyLevel, string> = {
+  "ask-all":    "Strictest: every tool call asks for confirmation first.",
+  "ask-writes": "Default: reads/searches run automatically; file writes ask first.",
+  "auto":       "Fastest: no prompts. Use only for short, trusted runs.",
+};
+
 type ClaudePrefs = {
   model: string;
   temperature: number;
   system_prompt: string;
+  autonomy: AutonomyLevel;
 };
 
 const MODEL_LABEL: Record<string, string> = {
@@ -508,6 +539,7 @@ function ClaudeTab() {
     model: "claude-opus-4-7",
     temperature: 1.0,
     system_prompt: "",
+    autonomy: "ask-writes",
   });
   const [saving, setSaving] = useState(false);
 
@@ -574,6 +606,38 @@ function ClaudeTab() {
         )}
       </FormField>
 
+      {/* Phase 8.9: Autonomy. Three stops, single source of truth so the
+          workflow runner and the future ChatPane both read the same value. */}
+      <Section title="Autonomy">
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+          How often Arasul stops to confirm before acting on your behalf.
+        </p>
+        <RadioGroup
+          value={prefs.autonomy}
+          onValueChange={(v) => setPrefs({ ...prefs, autonomy: v as AutonomyLevel })}
+          className="gap-2"
+          aria-label="AI autonomy level"
+        >
+          {(["ask-all", "ask-writes", "auto"] as AutonomyLevel[]).map((level) => (
+            <label
+              key={level}
+              className="flex items-start gap-3 p-3 rounded-md border border-border-default bg-elevated cursor-pointer data-[state=checked]:border-accent data-[state=checked]:bg-accent-soft has-[input:focus-visible]:[box-shadow:var(--focus-ring)]"
+              data-state={prefs.autonomy === level ? "checked" : "unchecked"}
+            >
+              <RadioGroupItem value={level} className="mt-0.5 shrink-0" />
+              <div className="flex flex-col gap-0.5 min-w-0">
+                <span className="text-[length:var(--text-body)] font-medium text-fg">
+                  {AUTONOMY_LABEL[level]}
+                </span>
+                <span className="text-[length:var(--text-body-sm)] text-fg-muted">
+                  {AUTONOMY_DESC[level]}
+                </span>
+              </div>
+            </label>
+          ))}
+        </RadioGroup>
+      </Section>
+
       <FormField label="Custom system prompt (optional)">
         {(props) => (
           <Textarea
@@ -591,6 +655,27 @@ function ClaudeTab() {
           {saving ? "Saving" : "Save"}
         </Button>
       </div>
+    </TabBody>
+  );
+}
+
+/* ============================================================
+ * AI engines — Phase 8.1 (2026-05-11). Wires the long-orphaned
+ * ProviderPicker component into Settings. Each known provider
+ * (Claude Code, OpenAI Codex, Google Gemini, Cursor, Ollama) shows
+ * with its auth status + an inline "Install" button when missing.
+ * Selection isn't bound yet — Phase 8.2 ChatPane will own that.
+ * ============================================================ */
+
+function EnginesTab() {
+  return (
+    <TabBody title="AI engines">
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+        Arasul talks to AI through the official CLI of each engine — your
+        own subscription pays. No API keys, no proxy, no Arasul cloud.
+        Pick which engines you want installed on this drive.
+      </p>
+      <ProviderPicker />
     </TabBody>
   );
 }

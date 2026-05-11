@@ -74,11 +74,19 @@ Professional colleague who doesn't waste words. Direct second-person. Errors exp
 
 ### 2.2 Dashboard panes
 
+> **Reality as of Phase 8 (2026-05-11):** the right pane currently hosts
+> a `myhub-tui` terminal in xterm.js — *not* the chat surface drawn
+> below. A native `ChatPane` overlay with streaming bubbles, markdown
+> render, code-block copy/insert, `@`-mentions, and Apply-on-diff cards
+> is queued as Phase 8.2 of `docs/plans/2026-05-11-frontend-ux-overhaul.md`.
+> When it lands, it'll mount alongside the terminal (split or toggle),
+> not replace it.
+
 ```
 ┌─ Top bar ───────────────────────────────────────────────────────────┐
 │ [Briefer stream, collapsible]                            [update?]  │
 ├─── Left ──┬─── Middle ───────────────────┬─── Right ───────────────┤
-│ Tree      │ Editor (CodeMirror 6)         │ Chat (streaming)         │
+│ Tree      │ Editor (CodeMirror 6)         │ Chat (streaming) [8.2]   │
 │ filtered  │ ┌─────────────────────────┐   │ ┌─────────────────────┐ │
 │ from      │ │  tab bar                │   │ │ messages            │ │
 │ content/  │ ├─────────────────────────┤   │ │                     │ │
@@ -89,11 +97,11 @@ Professional colleague who doesn't waste words. Direct second-person. Errors exp
 │           │ │                         │   │ │ @project to ground  │ │
 │           │ │                         │   │ └─────────────────────┘ │
 │           │ │                         │   ├──────────────────────────┤
-│           │ │                         │   │ Terminal (xterm.js)       │
-│           │ │                         │   │ collapsed by default      │
-│           │ │                         │   │ ▼ ⌘J to expand            │
+│           │ │                         │   │ myhub-tui  [LIVE today]   │
+│           │ │                         │   │ xterm.js inside PTY       │
+│           │ │                         │   │ Click to focus · ⌘L       │
 ├───────────┴───────────────────────────┴──────────────────────────────┤
-│ ⌘P proj · ⌘N new · ⌘K cmd · ⌘⇧C claude · ⌘J term · ⌘, settings      │
+│ ⌘P proj · ⌘N new · ⌘K cmd · ⌘L focus AI · ⌘, settings              │
 └──────────────────────────────────────────────────────────────────────┘
 ```
 
