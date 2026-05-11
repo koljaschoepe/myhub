@@ -8,6 +8,10 @@
   display: flex;
   flex-direction: column;
   overflow-y: auto;
+  /* Phase 2.4 (WCAG 2.4.11 Focus Not Obscured, AA 2.2 new): leave room
+   * for the sticky toolbar (--toolbar-h) so anchored-link scrolls and
+   * keyboard focus moves don't park the focused element under it. */
+  scroll-padding-top: calc(var(--toolbar-h) + var(--space-3));
   background: var(--bg-canvas);
   padding: 0 0 var(--editor-pad-y-bottom);
 }

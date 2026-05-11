@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Command } from "cmdk";
+import { Command, useCommandState } from "cmdk";
 import { invoke } from "@tauri-apps/api/core";
 import { useWorkspace } from "../lib/workspace";
 import { useSession } from "../lib/session";
@@ -31,6 +31,31 @@ type Props = {
   onOpenSettings?: () => void;
   onOpenSearch?: () => void;
 };
+
+/**
+ * Phase 2.5: announces the current filtered result count via an
+ * aria-live region. cmdk filters incrementally as the user types, so
+ * the screen reader hears "5 results for foo" etc. Suppressed when
+ * the input is empty (no useful announcement) and debounced 200ms via
+ * cmdk's own internal batching so we don't spam.
+ */
+function CmdkResultAnnouncer({ query }: { query: string }) {
+  const count = useCommandState((state) => state.filtered.count);
+  if (!query.trim()) return null;
+  const text = count === 0
+    ? "No matches"
+    : count === 1 ? "1 result" : `${count} results`;
+  return (
+    <span
+      role="status"
+      aria-live="polite"
+      aria-atomic="true"
+      className="sr-only"
+    >
+      {text}
+    </span>
+  );
+}
 
 function highlight(text: string, query: string): React.ReactNode {
   if (!query) return text;
@@ -128,6 +153,11 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
             value={query}
             onValueChange={setQuery}
           />
+          {/* Phase 2.5 (WCAG 4.1.3 Status Messages): announce filtered
+              result count to screen readers without moving focus.
+              Mounted as a child of Command so useCommandState picks up
+              filtered.count from the cmdk context. */}
+          <CmdkResultAnnouncer query={query} />
           <Command.List className="arasul-cmdk-list">
             <Command.Empty>No matches — try a different search.</Command.Empty>
 

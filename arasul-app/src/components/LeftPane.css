@@ -322,7 +322,9 @@
   font-size: var(--fs-xs);
   font-weight: var(--fw-medium);
   color: var(--accent);
-  padding: 2px 8px;
+  padding: 4px 10px;
+  /* Phase 2.3 (WCAG 2.5.8). */
+  min-height: 24px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;

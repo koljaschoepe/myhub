@@ -6,6 +6,7 @@ import {
   type DataEditorRef,
   type EditableGridCell,
   type GridCell,
+  type GridSelection,
   type Item,
   type GridColumn,
 } from "@glideapps/glide-data-grid";
@@ -95,6 +96,13 @@ export function SpreadsheetEditor({ filePath }: Props) {
   // Status reset timer — separate so transitions like saving→saved→clean
   // don't fight a save that arrived in between.
   const statusTimer = useRef<number | null>(null);
+
+  // Phase 2.8 (WCAG 4.1.3): polite SR announcement of the active cell.
+  // glide-data-grid renders to canvas, so the cell move isn't visible to
+  // screen readers via the DOM. We hand-author a "Row N of M, column X,
+  // value Y" message via the onGridSelectionChange callback.
+  const [a11yAnnouncement, setA11yAnnouncement] = useState("");
+  const lastAnnouncedRef = useRef<string>("");
 
   // Open the workbook on mount; close on unmount.
   useEffect(() => {
@@ -402,13 +410,43 @@ export function SpreadsheetEditor({ filePath }: Props) {
     return <div className="arasul-sheet-loading">Loading workbook…</div>;
   }
 
+  // Phase 2.8: emit SR-friendly announcement when the active cell moves.
+  // glide-data-grid's canvas means SR's don't see cell focus via the DOM
+  // tree — this aria-live region is the only way they hear cell moves.
+  const onGridSelection = useCallback(
+    (sel: GridSelection) => {
+      const c = sel.current?.cell;
+      if (!c) return;
+      const [col, row] = c;
+      const cell = getCellContent([col, row]);
+      const value =
+        ("displayData" in cell && cell.displayData) ||
+        ("data" in cell && cell.data != null && String(cell.data)) ||
+        "empty";
+      const msg = `Row ${row + 1} of ${visibleRows}, column ${colName(col)}, ${value}`;
+      if (msg === lastAnnouncedRef.current) return;
+      lastAnnouncedRef.current = msg;
+      setA11yAnnouncement(msg);
+    },
+    [getCellContent, visibleRows],
+  );
+
   return (
-    <div className="arasul-sheet-shell">
+    <div
+      className="arasul-sheet-shell"
+      role="region"
+      aria-label={
+        activeSheet
+          ? `Spreadsheet · sheet ${activeSheet}`
+          : "Spreadsheet"
+      }
+    >
       <div className="arasul-sheet-grid">
         <DataEditor
           ref={editorRef}
           getCellContent={getCellContent}
           onCellEdited={onCellEdited}
+          onGridSelectionChange={onGridSelection}
           columns={columns}
           rows={visibleRows}
           width="100%"
@@ -418,6 +456,16 @@ export function SpreadsheetEditor({ filePath }: Props) {
           smoothScrollY
           theme={SHEET_THEME}
         />
+        {/* Phase 2.8: SR cell-move announcer. Read by AT, invisible on
+            screen. Throttled internally by skipping repeat messages. */}
+        <span
+          role="status"
+          aria-live="polite"
+          aria-atomic="true"
+          className="sr-only"
+        >
+          {a11yAnnouncement}
+        </span>
       </div>
       {sheets.length > 0 && (
         <nav className="arasul-sheet-tabs" aria-label="Workbook sheets">

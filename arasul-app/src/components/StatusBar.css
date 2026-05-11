@@ -17,7 +17,12 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 4px;
+  padding: 4px 6px;
+  /* Phase 2.3 (WCAG 2.5.8 Target Size, AA): keep 24x24 tap target even
+   * when the visible content (kbd + label) is much smaller. Pad rather
+   * than scale so the visual stays compact. */
+  min-height: 24px;
+  min-width: 24px;
   border-radius: var(--radius-sm);
   color: var(--text-tertiary);
   font-size: inherit;
@@ -46,7 +51,10 @@
   display: inline-flex;
   align-items: center;
   gap: 4px;
-  padding: 2px 4px;
+  padding: 4px 6px;
+  /* Phase 2.3 (WCAG 2.5.8 Target Size, AA). */
+  min-height: 24px;
+  min-width: 24px;
   border-radius: var(--radius-sm);
   background: transparent;
   border: 0;

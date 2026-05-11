@@ -261,6 +261,20 @@
     --motion: 0ms;
     --motion-slow: 0ms;
   }
+
+  /* Phase 2.2 (2026-05-11): universal sledgehammer for any rogue CSS that
+   * hardcodes a duration instead of using --motion-*. Pseudo-selectors are
+   * included so ::before / ::after spinners stop too. scroll-behavior is
+   * forced to instant so smooth-scroll-to-anchor doesn't cause vestibular
+   * issues for users on the reduce setting.
+   * WCAG 2.3.3 (Animation from Interactions, AAA — cheap to ship).
+   */
+  *, *::before, *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
 }
 
 /* --- Light theme --------------------------------------------------- */
@@ -352,10 +366,34 @@ button {
   cursor: pointer;
 }
 
+/* Phase 2.1 (2026-05-11): universal focus-visible coverage.
+ * --focus-ring is a two-layer box-shadow (2px solid accent + 4px halo) so
+ * it stays legible on both --bg-canvas and --accent-soft surfaces. The
+ * selector list covers native interactive elements plus the ARIA roles
+ * Radix and our ui/ primitives use, so nothing slips through unstyled.
+ * Border-radius defaults to --radius-sm; per-component CSS can override.
+ *
+ * WCAG 2.4.7 (Focus Visible, AA) + 2.4.11 (Focus Not Obscured, AA 2.2 new).
+ */
 button:focus-visible,
+a:focus-visible,
 input:focus-visible,
 textarea:focus-visible,
-[tabindex]:focus-visible {
+select:focus-visible,
+summary:focus-visible,
+[tabindex]:not([tabindex="-1"]):focus-visible,
+[role="button"]:focus-visible,
+[role="link"]:focus-visible,
+[role="menuitem"]:focus-visible,
+[role="menuitemcheckbox"]:focus-visible,
+[role="menuitemradio"]:focus-visible,
+[role="tab"]:focus-visible,
+[role="option"]:focus-visible,
+[role="combobox"]:focus-visible,
+[role="treeitem"]:focus-visible,
+[role="switch"]:focus-visible,
+[role="checkbox"]:focus-visible,
+[role="radio"]:focus-visible {
   outline: 0;
   box-shadow: var(--focus-ring);
   border-radius: var(--radius-sm);

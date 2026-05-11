@@ -71,7 +71,7 @@ For headless agent calls: `subprocess.run(["claude", "-p", "--agent", "<agent>",
 
 **Never** import `anthropic`, `openai`, or any SDK. The `PreToolUse` hook will block edits/writes that contain such imports unless the file carries `# arasul:allow-api-sdk` with a justification (and even then: ask first).
 
-`_resolve_claude(root)` is currently duplicated in `commands/ai.py` and `commands/brief.py`. When touching either, also fix the other; long-term we extract this to `core/bin_resolve.py` (Phase 6.1 of master plan).
+`resolve_claude(root)` lives in `core/bin_resolve.py` and is imported by both `commands/ai.py` and `commands/brief.py`. Don't reintroduce a per-command copy. (Phase 2.13 of frontend-ux-overhaul verified the extraction; previous "duplicated" note here was stale.)
 
 ## Wizard pattern
 
