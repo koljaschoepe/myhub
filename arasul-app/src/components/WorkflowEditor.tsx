@@ -224,6 +224,23 @@ export function WorkflowEditor({ filePath }: Props) {
     }
   }, [filePath, running, source]);
 
+  // Phase 6.13: ⌘⏎ in the workflow editor kicks off a run. Cursor /
+  // Jupyter convention. Defined here (after onRun) so the closure
+  // captures the latest callback without TDZ.
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      const mod = e.metaKey || e.ctrlKey;
+      if (!mod || e.shiftKey) return;
+      if (e.key !== "Enter") return;
+      const target = e.target as HTMLElement | null;
+      if (!target?.closest?.(".arasul-workflow-shell")) return;
+      e.preventDefault();
+      if (!running) void onRun();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [running, onRun]);
+
   // Load a past run from the history list — purely a read-only replay.
   const onLoadHistorical = useCallback(async (id: string) => {
     try {

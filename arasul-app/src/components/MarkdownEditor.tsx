@@ -22,12 +22,13 @@ import { Markdown } from "tiptap-markdown";
 import { common, createLowlight } from "lowlight";
 import {
   Bold, Italic, Underline as UnderlineIcon, Strikethrough,
-  Code, Link as LinkIcon,
+  Code, Link as LinkIcon, List as ListIcon, X,
 } from "lucide-react";
 import { MarkdownToolbar } from "./MarkdownToolbar";
 import { MarkdownSlashMenu } from "./MarkdownSlashMenu";
 import { Callouts } from "./markdownExtensions/Callouts";
 import { notify } from "../lib/toast";
+import { getScroll, saveScroll } from "../lib/scrollMemory";
 import { useAppConfig } from "../hooks/useAppConfig";
 import "./MarkdownEditor.css";
 
@@ -39,6 +40,8 @@ const COMPACT_KEY = "arasul.md.compact";
 const SOURCE_KEY = "arasul.md.source";
 
 type Props = { filePath: string };
+
+// Phase 6.14: per-file scroll restore lives in lib/scrollMemory.
 
 /**
  * Always-on rendered markdown editor (Cursor/Notion style).
@@ -173,6 +176,16 @@ export function MarkdownEditor({ filePath }: Props) {
     }
   }, []);
 
+  // Phase 6.14: ref to the scroll container so we can save+restore
+  // the viewport position across file switches.
+  const scrollRef = useRef<HTMLDivElement | null>(null);
+
+  // Phase 6.4: outline / TOC.
+  const [outlineOpen, setOutlineOpen] = useState(false);
+  const [headings, setHeadings] = useState<
+    { level: number; text: string; pos: number }[]
+  >([]);
+
   // Load on mount and when filePath changes.
   useEffect(() => {
     if (!editor) return;
@@ -185,6 +198,17 @@ export function MarkdownEditor({ filePath }: Props) {
         setSourceText(text);
         lastSavedSource.current = text;
         setStatus("clean");
+        // Phase 6.14: restore the scrollTop AFTER content lands.
+        // requestAnimationFrame ensures layout has settled.
+        const saved = getScroll(filePath);
+        if (saved !== null && scrollRef.current) {
+          const el = scrollRef.current;
+          requestAnimationFrame(() => {
+            // Re-check the ref in case the editor unmounted between
+            // load resolve and the next frame.
+            if (el.isConnected) el.scrollTop = saved;
+          });
+        }
       } catch (e) {
         if (cancelled) return;
         console.error("read_file failed:", e);
@@ -196,6 +220,66 @@ export function MarkdownEditor({ filePath }: Props) {
     })();
     return () => { cancelled = true; };
   }, [editor, filePath]);
+
+  // Phase 6.14: persist the viewport scroll on unmount (file switch /
+  // editor close). Cheap — one localStorage write per close.
+  useEffect(() => {
+    const path = filePath;
+    const el = scrollRef.current;
+    return () => {
+      if (el) saveScroll(path, el.scrollTop);
+    };
+  }, [filePath]);
+
+  // Phase 6.4: extract heading hierarchy from the doc on every update
+  // (debounced). The result feeds the outline panel.
+  useEffect(() => {
+    if (!editor) return;
+    const extract = () => {
+      const hs: { level: number; text: string; pos: number }[] = [];
+      editor.state.doc.descendants((node, pos) => {
+        if (node.type.name === "heading") {
+          hs.push({
+            level: node.attrs.level as number,
+            text: node.textContent,
+            pos: pos + 1,
+          });
+          return false;  // don't recurse into the heading's text
+        }
+        return true;
+      });
+      setHeadings(hs);
+    };
+    extract();  // initial
+    let t: number | undefined;
+    const onUpdate = () => {
+      if (t) window.clearTimeout(t);
+      t = window.setTimeout(extract, 300);
+    };
+    editor.on("update", onUpdate);
+    return () => {
+      editor.off("update", onUpdate);
+      if (t) window.clearTimeout(t);
+    };
+  }, [editor]);
+
+  const scrollToHeading = useCallback(
+    (h: { pos: number }) => {
+      if (!editor) return;
+      editor.commands.focus();
+      editor.commands.setTextSelection(h.pos);
+      // domAtPos returns the text node; walk up to find the heading element.
+      try {
+        let node: Node | null = editor.view.domAtPos(h.pos).node;
+        while (node && node.nodeType !== 1) node = node.parentNode;
+        const el = node as HTMLElement | null;
+        if (el?.scrollIntoView) {
+          el.scrollIntoView({ behavior: "smooth", block: "start" });
+        }
+      } catch { /* domAtPos throws if pos is out of range — ignore */ }
+    },
+    [editor],
+  );
 
   // Subscribe to updates → autosave debounce + word/char count.
   useEffect(() => {
@@ -433,10 +517,13 @@ export function MarkdownEditor({ filePath }: Props) {
   }, [filePath, save]);
 
   return (
-    <div className={"arasul-md-editor"
-      + (compact ? " compact" : "")
-      + (sourceMode ? " source" : "")
-    }>
+    <div
+      ref={scrollRef}
+      className={"arasul-md-editor"
+        + (compact ? " compact" : "")
+        + (sourceMode ? " source" : "")
+      }
+    >
       {!compact && (
         <MarkdownToolbar
           editor={editor}
@@ -481,6 +568,63 @@ export function MarkdownEditor({ filePath }: Props) {
         </div>
       ) : (
         <EditorContent editor={editor} className="arasul-md-canvas" />
+      )}
+      {/* Phase 6.4: outline / TOC. Toggle button in top-right corner of
+          the editor; click opens a sticky-positioned panel listing
+          headings, each clickable to scroll the editor to that section. */}
+      {!sourceMode && !compact && headings.length > 0 && (
+        <button
+          type="button"
+          className={"arasul-md-outline-toggle" + (outlineOpen ? " active" : "")}
+          onClick={() => setOutlineOpen((o) => !o)}
+          title={outlineOpen ? "Hide outline" : "Show outline"}
+          aria-label={outlineOpen ? "Hide outline" : "Show outline"}
+          aria-expanded={outlineOpen}
+        >
+          <ListIcon size={14} />
+        </button>
+      )}
+      {!sourceMode && outlineOpen && (
+        <aside
+          className="arasul-md-outline"
+          role="navigation"
+          aria-label="Document outline"
+        >
+          <div className="arasul-md-outline-head">
+            <span>Outline</span>
+            <button
+              type="button"
+              className="arasul-md-outline-close"
+              onClick={() => setOutlineOpen(false)}
+              aria-label="Close outline"
+            >
+              <X size={12} />
+            </button>
+          </div>
+          {headings.length === 0 ? (
+            <p className="arasul-md-outline-empty">
+              No headings yet. Add an H1/H2/… to get started.
+            </p>
+          ) : (
+            <ul className="arasul-md-outline-list">
+              {headings.map((h, i) => (
+                <li
+                  key={`${h.pos}-${i}`}
+                  data-level={h.level}
+                  className="arasul-md-outline-item"
+                >
+                  <button
+                    type="button"
+                    className="arasul-md-outline-link"
+                    onClick={() => scrollToHeading(h)}
+                  >
+                    {h.text || `(empty heading ${h.level})`}
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </aside>
       )}
       {!sourceMode && editor && (
         <BubbleMenu editor={editor} className="arasul-md-bubble">

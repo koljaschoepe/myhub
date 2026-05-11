@@ -424,9 +424,38 @@
   color: var(--text-tertiary);
   font-size: var(--fs-sm);
 }
-.arasul-md-heading-sample[data-level="1"] { font-size: var(--fs-h3); font-weight: var(--fw-semibold); color: var(--text-secondary); }
-.arasul-md-heading-sample[data-level="2"] { font-size: var(--fs-h4); font-weight: var(--fw-medium); }
-.arasul-md-heading-sample[data-level="3"] { font-size: var(--fs-md); }
+/* Phase 6.3 (Notion pattern): each heading level gets a distinct
+ * sample size + a level-specific accent color so the dropdown reads as
+ * a visual hierarchy, not a flat list. H1 = accent; H2/H3 = success
+ * (cool secondary); H4/H5 = warning (warm); H6 = muted. The colors
+ * carry meaning ("major" vs "minor"), not vibrance. */
+.arasul-md-heading-sample[data-level="1"] {
+  font-size: var(--fs-h3);
+  font-weight: var(--fw-semibold);
+  color: var(--accent);
+}
+.arasul-md-heading-sample[data-level="2"] {
+  font-size: var(--fs-h4);
+  font-weight: var(--fw-medium);
+  color: var(--accent-hover);
+}
+.arasul-md-heading-sample[data-level="3"] {
+  font-size: var(--fs-md);
+  color: var(--success);
+}
+.arasul-md-heading-sample[data-level="4"] {
+  font-size: var(--fs-sm);
+  font-weight: var(--fw-medium);
+  color: var(--info);
+}
+.arasul-md-heading-sample[data-level="5"] {
+  font-size: var(--fs-sm);
+  color: var(--warning);
+}
+.arasul-md-heading-sample[data-level="6"] {
+  font-size: var(--fs-sm);
+  color: var(--text-muted);
+}
 
 
 /* ============================================================
@@ -560,8 +589,12 @@
   display: flex;
   align-items: center;
   gap: var(--sp-2);
-  min-width: 380px;
-  max-width: 560px;
+  /* Phase 6.5: viewport-aware sizing. Caps at 560px on wide screens,
+   * shrinks gracefully on narrow ones (Onboarding/right-pane-narrow
+   * viewports). Reserves 32px of side padding so the box never butts
+   * against the window edge. */
+  width: min(560px, calc(100vw - 32px));
+  min-width: min(320px, calc(100vw - 32px));
   padding: var(--sp-2) var(--sp-3);
   background: var(--bg-elevated);
   border: 1px solid var(--accent);
@@ -632,3 +665,111 @@
 .arasul-md-canvas blockquote.arasul-callout-important::before { color: var(--accent-strong); }
 .arasul-md-canvas blockquote.arasul-callout-caution   { border-left-color: var(--danger); }
 .arasul-md-canvas blockquote.arasul-callout-caution::before   { color: var(--danger); }
+
+/* ============================================================
+   Phase 6.4: Outline / Table-of-Contents panel
+   ============================================================ */
+
+.arasul-md-outline-toggle {
+  position: absolute;
+  top: calc(var(--toolbar-h) + var(--space-3));
+  right: var(--space-3);
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: var(--bg-elevated);
+  color: var(--text-secondary);
+  border: var(--border);
+  z-index: var(--z-sticky);
+  transition: background var(--motion-fast), color var(--motion-fast);
+  cursor: pointer;
+}
+.arasul-md-outline-toggle:hover {
+  background: var(--bg-pane);
+  color: var(--text-primary);
+}
+.arasul-md-outline-toggle.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+  border-color: var(--accent-soft);
+}
+
+.arasul-md-outline {
+  position: absolute;
+  top: calc(var(--toolbar-h) + var(--space-3));
+  right: var(--space-3);
+  width: min(260px, 32vw);
+  max-height: calc(100% - var(--toolbar-h) - var(--space-8));
+  display: flex;
+  flex-direction: column;
+  background: var(--bg-elevated);
+  border: 1px solid var(--border-strong);
+  border-radius: var(--radius);
+  box-shadow: var(--elev-3);
+  z-index: var(--z-overlay-local);
+  animation: drop-in var(--dur-fast) var(--ease-out);
+}
+.arasul-md-outline-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 8px 12px;
+  border-bottom: var(--border);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+}
+.arasul-md-outline-close {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 20px;
+  height: 20px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 0;
+  color: var(--text-tertiary);
+  cursor: pointer;
+}
+.arasul-md-outline-close:hover { background: var(--hover); color: var(--text-primary); }
+.arasul-md-outline-list {
+  list-style: none;
+  margin: 0;
+  padding: 4px 0;
+  overflow-y: auto;
+}
+.arasul-md-outline-item { margin: 0; }
+.arasul-md-outline-item[data-level="2"] { padding-left: 12px; }
+.arasul-md-outline-item[data-level="3"] { padding-left: 24px; }
+.arasul-md-outline-item[data-level="4"] { padding-left: 36px; }
+.arasul-md-outline-item[data-level="5"] { padding-left: 48px; }
+.arasul-md-outline-item[data-level="6"] { padding-left: 60px; }
+.arasul-md-outline-link {
+  display: block;
+  width: 100%;
+  text-align: left;
+  background: transparent;
+  border: 0;
+  padding: 4px 12px;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-md-outline-link:hover {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+.arasul-md-outline-empty {
+  padding: 12px;
+  color: var(--text-tertiary);
+  font-size: var(--fs-sm);
+}
