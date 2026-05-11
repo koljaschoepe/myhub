@@ -2,7 +2,20 @@
  * Arasul theme — Direction 1A · Linear-clean.
  * Locked 2026-04-24 (Phase 0 Step 0.11). Source of truth for tokens;
  * all component CSS references these custom properties, never hex directly.
+ *
+ * Phase 1 (2026-05-11): Tailwind v4 + Radix primitives adopted.
+ *   - @import "tailwindcss" enables CSS-first Tailwind. No tailwind.config.js.
+ *   - @theme block (below) exposes our tokens as Tailwind utility namespaces.
+ *   - 2026 token scales added ADDITIVELY: --space-N, --text-*, semantic
+ *     bg/border/text/accent, full --radius-* scale, --elev-N, --z-*.
+ *   - Legacy --sp-N, --fs-*, --shadow-* tokens kept as aliases — every
+ *     existing component CSS continues to compile unchanged. Migrate at
+ *     leisure during Phase 1.5–1.9 component refactors.
+ *   - Plan: docs/plans/2026-05-11-frontend-ux-overhaul.md, Phase 1.
+ *   - Reference: docs/design/tokens.md.
  */
+
+@import "tailwindcss";
 
 :root {
   /* --- Palette ------------------------------------------------------- */
@@ -14,7 +27,9 @@
 
   --text-primary: #E6E8EC;
   --text-secondary: #9AA0AB;
-  --text-tertiary: #636976;
+  /* --text-tertiary: bumped 2026-05-11 (Phase 0.9) from #636976 (3.48:1)
+     to #7A8596 (~6:1 on bg-canvas) to clear WCAG 1.4.3 AA for hint text. */
+  --text-tertiary: #7A8596;
   --text-on-accent: var(--bg-canvas);
 
   --accent: #7C8FFC;
@@ -85,10 +100,67 @@
   --sp-6: 24px;
   --sp-8: 32px;
 
+  /* Phase 1.3: 2026 spacing scale (4pt base, 8pt-dominant rhythm).
+     Follow the design-system-research recommendation; old --sp-N stay
+     valid as aliases (see legacy block below). New code uses --space-N. */
+  --space-0: 0;
+  --space-px: 1px;     /* hairlines */
+  --space-1: 2px;      /* micro nudges (icon→text, badge padding-y) */
+  --space-2: 4px;      /* tight inline */
+  --space-3: 8px;      /* default gap inside a row */
+  --space-4: 12px;     /* input padding-y, compact card gap */
+  --space-5: 16px;     /* default component padding */
+  --space-6: 24px;     /* section gap inside a panel */
+  --space-8: 32px;     /* panel→panel, modal padding */
+  --space-10: 48px;    /* large vertical rhythm */
+  --space-12: 64px;    /* page-level separations */
+
   --row-tree: 28px;
   --row-tab: 32px;
   --pane-pad-x: 16px;
   --pane-pad-y: 12px;
+
+  /* --- Semantic surfaces (Phase 1.3) -------------------------------
+     Names mirror the 2026 token API. The existing --bg-canvas / --bg-pane /
+     --bg-elevated remain canonical; these aliases give new code clearer
+     intent without duplicating values. */
+  --bg-surface: var(--bg-pane);     /* panels, sidebar */
+  --bg-overlay: var(--hover, rgba(255, 255, 255, 0.04));  /* hovered rows */
+  --bg-sunken: var(--code-block-bg, #0a0b0d);             /* code, terminal */
+
+  --border-default: var(--border-subtle);
+
+  --text-muted: var(--text-tertiary);
+  --text-disabled: var(--text-tertiary);
+
+  /* Phase 1.3: explicit hover/active accent variants. accent-hover stays
+     an alias of the legacy --accent-strong; accent-active is new. */
+  --accent-hover: var(--accent-strong);
+  --accent-active: #5564D0;     /* darker than --accent-strong (#6578E8) */
+  --accent-fg: var(--text-on-accent);
+
+  --danger-hover: #D14444;
+  --success-hover: #4FB675;
+
+  --info: #5CA9F2;
+  --info-soft: rgba(92, 169, 242, 0.12);
+
+  /* --- Semantic type scale (Phase 1.3) -------------------------------
+     Body anchored at 13px (Linear/Cursor density). Legacy --fs-* stay
+     as aliases below. */
+  --text-caption:  11px;   /* timestamps, badges, kbd hints */
+  --text-body-sm:  12px;   /* dense lists, table cells, terminal */
+  --text-body:     13px;   /* DEFAULT UI text */
+  --text-body-lg:  15px;   /* editor prose, dialogs */
+  --text-h4:       16px;   /* card titles */
+  --text-h3:       18px;   /* panel headers */
+  --text-h2:       22px;   /* modal titles */
+  --text-h1:       28px;   /* page titles */
+  --text-display:  32px;   /* hero / brand */
+
+  --leading-tight: 1.3;
+  --leading-body:  1.5;
+  --leading-loose: 1.65;
 }
 
 /* UI density override — tightens or loosens row heights and pane padding
@@ -113,14 +185,51 @@
   --radius-sm: 4px;
   --radius: 6px;
   --radius-lg: 8px;
+  --radius-pill: 9999px;
   --border: 1px solid var(--border-subtle);
   --border-focus: 1px solid var(--border-strong);
+
+  /* Phase 1.3: full radius scale (sm/md/lg/xl/2xl/full). Legacy --radius
+     (6px, no suffix) is kept; new code prefers --radius-md (same value). */
+  --radius-md:  6px;
+  --radius-xl:  12px;
+  --radius-2xl: 16px;
+  --radius-full: 9999px;
+
+  /* --- Icon sizes (Phase 0.11 — Lucide `size` prop should reference
+         these tokens, not hardcoded pixels). */
+  --icon-xs: 11px;
+  --icon-sm: 12px;
+  --icon-md: 14px;
+  --icon-lg: 16px;
+  --icon-xl: 20px;
+
+  /* --- z-index stratification (Phase 1.4) -------------------------
+     Replace numeric z-indices in component CSS. Modal range cleaned up
+     first (900-1300 was a collision zone — see audit findings). */
+  --z-base:           1;
+  --z-sticky:         5;       /* sticky toolbar, tab underline */
+  --z-overlay-local:  10;      /* heading-picker dropdown */
+  --z-overlay-pane:   50;      /* picker menu inside a pane */
+  --z-overlay-editor: 200;     /* drop overlay, import toast */
+  --z-modal-default:  1000;    /* CommandPalette, LeftPane modal, slash menu */
+  --z-modal-important:1100;    /* DriveEjected, EditorPane conflict dialog */
+  --z-modal-critical: 1200;    /* ShortcutsOverlay, ContextMenu (must beat) */
+  --z-modal-top:      1300;    /* Reserved for future urgent confirmations */
 
   /* --- Elevation --------------------------------------------------- */
   --focus-ring: 0 0 0 2px var(--accent), 0 0 0 4px rgba(124, 143, 252, 0.25);
   --shadow-sm: 0 2px 8px rgba(0, 0, 0, 0.15);
   --shadow-md: 0 8px 24px rgba(0, 0, 0, 0.35);
   --shadow-lg: 0 20px 60px rgba(0, 0, 0, 0.5);
+
+  /* Phase 1.3: semantic elevation scale. In dark UIs shadows alone don't
+     read — pair with a hairline inner border (rgba white) so the lifted
+     surface separates cleanly from canvas. Legacy --shadow-* are kept. */
+  --elev-1: 0 1px 0 0 rgba(0, 0, 0, 0.4);                                  /* row hover */
+  --elev-2: 0 2px 4px rgba(0, 0, 0, 0.4), 0 0 0 1px rgba(255, 255, 255, 0.04); /* card */
+  --elev-3: 0 8px 16px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.06); /* popover, menu */
+  --elev-4: 0 16px 32px rgba(0, 0, 0, 0.6), 0 0 0 1px rgba(255, 255, 255, 0.08); /* modal */
 
   /* --- Modal / overlay backdrop. One token everywhere so the dimming
          level stays consistent across CommandPalette, Settings, etc. */
@@ -167,7 +276,9 @@
 
   --text-primary: #18181B;
   --text-secondary: #52525B;
-  --text-tertiary: #A1A1AA;
+  /* --text-tertiary: bumped 2026-05-11 (Phase 0.9) from #A1A1AA (2.46:1)
+     to #71717A (~4.7:1 on bg-canvas) to clear WCAG 1.4.3 AA in light mode. */
+  --text-tertiary: #71717A;
   --text-on-accent: #FFFFFF;
 
   --accent: #5764E5;
@@ -186,6 +297,21 @@
   /* Code blocks need their own light surface — bg-canvas is already
      near-white, so use a slightly recessed card. */
   --code-block-bg: #F1F1F4;
+
+  /* Phase 1.3: light-mode overrides for semantic aliases + elevation.
+     The aliases (--bg-surface etc.) point to renamed neutrals, so they
+     swap automatically — but accent-active, danger-hover, success-hover,
+     info, and elev-* need explicit values. */
+  --accent-active: #3A45A8;
+  --danger-hover: #B91C1C;
+  --success-hover: #15803D;
+  --info: #2563EB;
+  --info-soft: rgba(37, 99, 235, 0.10);
+
+  --elev-1: 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elev-2: 0 2px 4px rgba(0, 0, 0, 0.06), 0 1px 2px rgba(0, 0, 0, 0.04);
+  --elev-3: 0 8px 16px rgba(0, 0, 0, 0.08), 0 2px 4px rgba(0, 0, 0, 0.04);
+  --elev-4: 0 16px 32px rgba(0, 0, 0, 0.12), 0 4px 8px rgba(0, 0, 0, 0.06);
 
   /* Syntax highlighting palette tuned for light surfaces (One Light). */
   --hljs-comment: #A0A1A7;
@@ -276,3 +402,83 @@ pre {
   background-clip: padding-box;
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--border-strong); background-clip: padding-box; }
+
+/* --- Tailwind v4 @theme ---------------------------------------------
+   Phase 1.3: expose our CSS-variable tokens as Tailwind utility
+   namespaces. Each --color-foo generates `bg-foo`, `text-foo`,
+   `border-foo`, `ring-foo` etc. --spacing is the base unit (so `p-3`
+   = 3 * 4px = 12px). --text-foo generates a font-size utility.
+   --radius-foo generates `rounded-foo`.
+
+   We `var()`-reference our CSS vars rather than duplicating literals so
+   light/dark theme swaps still drive Tailwind utilities at runtime.
+
+   Reference: https://tailwindcss.com/docs/theme (v4 @theme directive). */
+@theme {
+  /* Colors — semantic */
+  --color-canvas:        var(--bg-canvas);
+  --color-surface:       var(--bg-surface);
+  --color-elevated:      var(--bg-elevated);
+  --color-sunken:        var(--bg-sunken);
+  --color-overlay:       var(--bg-overlay);
+  --color-border-subtle: var(--border-subtle);
+  --color-border:        var(--border-default);
+  --color-border-strong: var(--border-strong);
+  /* Foreground (text) colors — utility names: text-fg, text-fg-muted, … */
+  --color-fg:            var(--text-primary);
+  --color-fg-secondary:  var(--text-secondary);
+  --color-fg-muted:      var(--text-muted);
+  --color-fg-tertiary:   var(--text-tertiary);
+  --color-fg-inverse:    var(--text-on-accent);
+
+  /* Accent + status — "*-fg" variants give Tailwind a foreground utility
+     that pairs with each colored background. */
+  --color-accent:         var(--accent);
+  --color-accent-hover:   var(--accent-hover);
+  --color-accent-active:  var(--accent-active);
+  --color-accent-soft:    var(--accent-soft);
+  --color-accent-fg:      var(--accent-fg);
+  --color-danger:         var(--danger);
+  --color-danger-soft:    var(--danger-soft);
+  --color-danger-fg:      #FFFFFF;
+  --color-success:        var(--success);
+  --color-success-soft:   var(--success-soft);
+  --color-success-fg:     #FFFFFF;
+  --color-warning:        var(--warning);
+  --color-warning-fg:     #1A1106;
+  --color-info:           var(--info);
+  --color-info-soft:      var(--info-soft);
+
+  /* Spacing — base unit 4px (matches --space-2). Tailwind utilities
+     `p-1/-2/-3/-4/-5/-6/-8/-10/-12` line up with --space-2..--space-12. */
+  --spacing: 4px;
+
+  /* Type scale */
+  --text-caption: var(--text-caption);
+  --text-body-sm: var(--text-body-sm);
+  --text-body:    var(--text-body);
+  --text-body-lg: var(--text-body-lg);
+  --text-h4:      var(--text-h4);
+  --text-h3:      var(--text-h3);
+  --text-h2:      var(--text-h2);
+  --text-h1:      var(--text-h1);
+  --text-display: var(--text-display);
+
+  /* Radius */
+  --radius-sm:   var(--radius-sm);
+  --radius-md:   var(--radius-md);
+  --radius-lg:   var(--radius-lg);
+  --radius-xl:   var(--radius-xl);
+  --radius-2xl:  var(--radius-2xl);
+  --radius-full: var(--radius-full);
+
+  /* Elevation (utility name `shadow-elev-1` etc.) */
+  --shadow-elev-1: var(--elev-1);
+  --shadow-elev-2: var(--elev-2);
+  --shadow-elev-3: var(--elev-3);
+  --shadow-elev-4: var(--elev-4);
+
+  /* Fonts */
+  --font-sans: var(--font-sans);
+  --font-mono: var(--font-mono);
+}

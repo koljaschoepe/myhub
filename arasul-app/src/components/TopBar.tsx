@@ -103,7 +103,7 @@ export function TopBar({ onOpenSettings }: Props = {}) {
       ? `${slug} · ${ws.openFilePath ? ws.openFilePath.split("/").pop() : "no file open"}`
       : ws.openFilePath
         ? `${ws.openFilePath.split("/").pop()}`
-        : "ready — pick a file or press ⌘P for projects"
+        : "Open a file to start — or press ⌘P to pick a project"
     : state.status === "locked" ? "vault locked"
     : state.status === "absent" ? "onboarding"
     : "";
@@ -127,7 +127,7 @@ export function TopBar({ onOpenSettings }: Props = {}) {
       >
         <SettingsIcon size={14} />
       </button>
-      <span className="arasul-briefer">{briefer}</span>
+      <span className="arasul-briefer" title={briefer}>{briefer}</span>
 
       {showGitControls && gh && (
         <>
@@ -157,6 +157,7 @@ export function TopBar({ onOpenSettings }: Props = {}) {
           className="arasul-update-pill"
           onClick={onOpenSettings}
           title={`Update available — ${update.latest_version}`}
+          aria-label={`Update to ${update.latest_version} — open Settings`}
         >
           <span>Update</span>
           <ArrowUpRight size={12} />

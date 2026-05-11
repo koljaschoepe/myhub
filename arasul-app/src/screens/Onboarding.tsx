@@ -4,9 +4,17 @@ import * as zxcvbnCommonPackage from "@zxcvbn-ts/language-common";
 import * as zxcvbnEnPackage from "@zxcvbn-ts/language-en";
 import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
+import { Eye, EyeOff } from "lucide-react";
 import { useSession } from "../lib/session";
-import { useFocusTrap } from "../lib/useFocusTrap";
 import { notify } from "../lib/toast";
+import {
+  Button,
+  Input,
+  IconButton,
+  Switch,
+  Badge,
+  FormField,
+} from "../components/ui";
 import "./Onboarding.css";
 
 zxcvbnOptions.setOptions({
@@ -23,6 +31,11 @@ zxcvbnOptions.setOptions({
  *      claude CLI is missing. We never ship the binary; we never touch the
  *      OAuth token. The user logs in inside the embedded PTY on first chat.
  *   4. Auto-launch opt-in.
+ *
+ * Phase 1.7 (2026-05-11) — migrated to ui/ primitives. Dropped
+ * `useFocusTrap` (the full-screen card is the only thing visible during
+ * onboarding, so a trap adds nothing). Added show/hide password toggle
+ * (Phase 4.2 quick win).
  */
 type Step = "welcome" | "passphrase" | "claude" | "auto-launch";
 
@@ -47,6 +60,7 @@ export function Onboarding() {
   const [name, setName] = useState("");
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [strength, setStrength] = useState<{ score: number; feedback?: string } | null>(null);
   const [autoLaunch, setAutoLaunch] = useState(true);
   const [busy, setBusy] = useState(false);
@@ -58,9 +72,6 @@ export function Onboarding() {
   const [installLog, setInstallLog] = useState<string>("");
   const [installResult, setInstallResult] = useState<"ok" | "fail" | null>(null);
   const logRef = useRef<HTMLPreElement>(null);
-
-  const cardRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(cardRef);
 
   useEffect(() => {
     if (!passphrase) { setStrength(null); return; }
@@ -99,7 +110,7 @@ export function Onboarding() {
 
   const finishPassphrase = async () => {
     setError(null);
-    if (passphrase.length < 4) { setError("At least 4 characters."); return; }
+    if (passphrase.length < 4) { setError("Use at least 4 characters."); return; }
     if (passphrase !== confirm) { setError("Passphrases don't match."); return; }
     setBusy(true);
     try {
@@ -148,7 +159,6 @@ export function Onboarding() {
       setInstallResult("fail");
       setInstalling(false);
     }
-    // Cleanup listener when this step is left.
     return () => { if (unlisten) unlisten(); };
   };
 
@@ -166,10 +176,23 @@ export function Onboarding() {
     }
   };
 
+  const passwordToggle = (
+    <IconButton
+      type="button"
+      label={showPassword ? "Hide passphrase" : "Show passphrase"}
+      variant="ghost"
+      size="sm"
+      showTooltip={false}
+      onClick={() => setShowPassword((v) => !v)}
+      tabIndex={-1}
+    >
+      {showPassword ? <EyeOff /> : <Eye />}
+    </IconButton>
+  );
+
   return (
     <div className="arasul-onboarding">
       <div
-        ref={cardRef}
         className="arasul-onboarding-card"
         role="dialog"
         aria-modal="true"
@@ -179,22 +202,32 @@ export function Onboarding() {
         {step === "welcome" && (
           <>
             <div id="onboarding-title" className="arasul-brand-hero">Arasul</div>
-            <p>A portable AI workspace on a drive you carry.</p>
-            <label>What should we call you?</label>
-            <input
-              type="text"
-              placeholder="Your name"
-              value={name}
-              onChange={(e) => setName(e.target.value)}
-              autoFocus
-              onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) next(); }}
-            />
-            <button
-              type="button"
+            <p className="text-fg-muted">A portable AI workspace on a drive you carry.</p>
+
+            <FormField label="What should we call you?">
+              {(props) => (
+                <Input
+                  size="lg"
+                  type="text"
+                  placeholder="Your name"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  autoFocus
+                  onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) next(); }}
+                  {...props}
+                />
+              )}
+            </FormField>
+
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
               onClick={next}
-              className="arasul-btn primary"
               disabled={!name.trim()}
-            >Continue</button>
+            >
+              Continue
+            </Button>
           </>
         )}
 
@@ -202,16 +235,29 @@ export function Onboarding() {
           <>
             <h2>Set a passphrase, {name.split(" ")[0] || "friend"}.</h2>
             <p className="arasul-muted">
-              This protects your AI credentials on the drive. You enter it each time you plug in.
-              Write it somewhere safe — if you lose it, your login is gone but your files are not.
+              This protects your AI access on the drive. You'll enter it when you reconnect this drive.
+              Write it down somewhere safe — we can't reset it. Your files stay safe either way.
             </p>
-            <input
-              type="password"
-              placeholder="Passphrase"
-              value={passphrase}
-              onChange={(e) => setPassphrase(e.target.value)}
-              autoFocus
-            />
+            <p className="arasul-muted">
+              Everything stays on this drive — your files, settings, and chats. No cloud, no sign-up.
+            </p>
+
+            <FormField label="Passphrase">
+              {(props) => (
+                <Input
+                  size="lg"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Passphrase"
+                  value={passphrase}
+                  onChange={(e) => setPassphrase(e.target.value)}
+                  autoFocus
+                  autoComplete="new-password"
+                  trailing={passwordToggle}
+                  {...props}
+                />
+              )}
+            </FormField>
+
             {strength && (
               <div className="arasul-strength">
                 <div className={`arasul-strength-bar score-${strength.score}`} />
@@ -219,17 +265,32 @@ export function Onboarding() {
                 {strength.feedback && <span className="arasul-muted">· {strength.feedback}</span>}
               </div>
             )}
-            <input
-              type="password"
-              placeholder="Confirm passphrase"
-              value={confirm}
-              onChange={(e) => setConfirm(e.target.value)}
-              onKeyDown={(e) => { if (e.key === "Enter") void finishPassphrase(); }}
-            />
-            {error && <div className="arasul-error">{error}</div>}
-            <button type="button" onClick={() => void finishPassphrase()} disabled={busy} className="arasul-btn primary">
-              {busy ? "Creating vault…" : "Create vault"}
-            </button>
+
+            <FormField label="Confirm passphrase" error={error ?? undefined}>
+              {(props) => (
+                <Input
+                  size="lg"
+                  type={showPassword ? "text" : "password"}
+                  placeholder="Confirm passphrase"
+                  value={confirm}
+                  onChange={(e) => setConfirm(e.target.value)}
+                  onKeyDown={(e) => { if (e.key === "Enter") void finishPassphrase(); }}
+                  autoComplete="new-password"
+                  {...props}
+                />
+              )}
+            </FormField>
+
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={() => void finishPassphrase()}
+              loading={busy}
+              disabled={busy}
+            >
+              {busy ? "Creating drive lock" : "Set up drive"}
+            </Button>
           </>
         )}
 
@@ -251,8 +312,10 @@ export function Onboarding() {
 
             {claudeStatus?.installed && installResult !== "fail" && (
               <div className="arasul-claude-status arasul-claude-status--ok">
-                <strong>Installed.</strong>
-                {claudeStatus.version && <span> {claudeStatus.version}</span>}
+                <Badge tone="success">Installed</Badge>
+                {claudeStatus.version && (
+                  <span className="ml-2 text-fg">{claudeStatus.version}</span>
+                )}
                 {claudeStatus.path && (
                   <div className="arasul-muted arasul-claude-path">{claudeStatus.path}</div>
                 )}
@@ -261,8 +324,8 @@ export function Onboarding() {
 
             {claudeStatus && !claudeStatus.installed && !installing && installResult !== "ok" && (
               <div className="arasul-claude-status arasul-claude-status--missing">
-                <strong>Not installed yet.</strong>
-                <div className="arasul-muted">
+                <Badge tone="warning">Not installed yet</Badge>
+                <div className="arasul-muted mt-2">
                   We'll run Anthropic's official installer for you — no terminal needed.
                 </div>
               </div>
@@ -285,29 +348,32 @@ export function Onboarding() {
             {installResult === "fail" && (
               <div className="arasul-error">
                 Install didn't complete. You can try again, skip for now, or install Claude Code
-                manually from https://claude.ai and come back.
+                manually from <a href="https://claude.ai" target="_blank" rel="noreferrer">claude.ai</a> and come back.
               </div>
             )}
 
             <div className="arasul-onboarding-actions">
               {claudeStatus && !claudeStatus.installed && installResult !== "ok" && (
-                <button
-                  type="button"
+                <Button
+                  variant="primary"
                   onClick={() => void installClaude()}
+                  loading={installing}
                   disabled={installing}
-                  className="arasul-btn primary"
                 >
-                  {installing ? "Installing…" : (installResult === "fail" ? "Try again" : "Install Claude Code")}
-                </button>
+                  {installing
+                    ? "Installing"
+                    : installResult === "fail"
+                    ? "Try again"
+                    : "Install Claude Code"}
+                </Button>
               )}
-              <button
-                type="button"
+              <Button
+                variant="ghost"
                 onClick={next}
                 disabled={installing}
-                className="arasul-btn"
               >
                 {claudeStatus?.installed || installResult === "ok" ? "Continue" : "Skip for now"}
-              </button>
+              </Button>
             </div>
           </>
         )}
@@ -318,17 +384,24 @@ export function Onboarding() {
             <p className="arasul-muted">
               When you plug this drive into this computer, open the app. You can change this in Settings.
             </p>
-            <label className="arasul-check">
-              <input
-                type="checkbox"
-                checked={autoLaunch}
-                onChange={(e) => setAutoLaunch(e.target.checked)}
-              />
-              Yes, open automatically
+
+            <label className="inline-flex items-center gap-3 my-3 cursor-pointer select-none">
+              <Switch checked={autoLaunch} onCheckedChange={setAutoLaunch} />
+              <span className="text-[length:var(--text-body)] text-fg">
+                Yes, open automatically
+              </span>
             </label>
-            <button type="button" onClick={() => void finishAutoLaunch()} disabled={busy} className="arasul-btn primary">
-              {busy ? "Installing…" : "Enter Arasul"}
-            </button>
+
+            <Button
+              variant="primary"
+              size="lg"
+              className="w-full"
+              onClick={() => void finishAutoLaunch()}
+              loading={busy}
+              disabled={busy}
+            >
+              {busy ? "Installing" : "Enter Arasul"}
+            </Button>
           </>
         )}
       </div>

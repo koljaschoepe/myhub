@@ -105,9 +105,21 @@ export function StatusBar() {
             <span className="arasul-status-git" title={`Branch · ${git.ahead} ahead · ${git.behind} behind · ${git.dirty} changes`}>
               <GitBranch size={10} />
               <span>{git.branch ?? "—"}</span>
-              {git.ahead > 0 && <span><ArrowUp size={10} />{git.ahead}</span>}
-              {git.behind > 0 && <span><ArrowDown size={10} />{git.behind}</span>}
-              {git.dirty > 0 && <span><Pencil size={10} />{git.dirty}</span>}
+              {git.ahead > 0 && (
+                <span title={`${git.ahead} commit${git.ahead === 1 ? "" : "s"} ahead of GitHub`} aria-label={`${git.ahead} ahead of GitHub`}>
+                  <ArrowUp size={10} aria-hidden="true" />{git.ahead}
+                </span>
+              )}
+              {git.behind > 0 && (
+                <span title={`${git.behind} commit${git.behind === 1 ? "" : "s"} behind GitHub`} aria-label={`${git.behind} behind GitHub`}>
+                  <ArrowDown size={10} aria-hidden="true" />{git.behind}
+                </span>
+              )}
+              {git.dirty > 0 && (
+                <span title={`${git.dirty} file${git.dirty === 1 ? "" : "s"} changed locally`} aria-label={`${git.dirty} files changed`}>
+                  <Pencil size={10} aria-hidden="true" />{git.dirty}
+                </span>
+              )}
             </span>
             <span className="arasul-status-sep">·</span>
           </>

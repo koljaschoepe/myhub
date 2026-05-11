@@ -80,6 +80,7 @@ function AppShell() {
   const { state, lock, driveRoot } = useSession();
   const { state: ws } = useWorkspace();
   const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsInitialTab, setSettingsInitialTab] = useState<string | undefined>(undefined);
   const [paletteOpen, setPaletteOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
@@ -172,6 +173,21 @@ function AppShell() {
     return () => window.removeEventListener("keydown", onKey);
   }, [lock]);
 
+  // Listen for `arasul:open-settings` events fired from anywhere in the app
+  // (e.g. LeftPane's "GitHub not connected → Connect" link). Detail.tab
+  // selects the initial Settings tab.
+  useEffect(() => {
+    const onOpenSettings = (e: Event) => {
+      const detail = (e as CustomEvent<{ tab?: string }>).detail;
+      setSettingsInitialTab(detail?.tab);
+      setSettingsOpen(true);
+      setPaletteOpen(false);
+      setSearchOpen(false);
+    };
+    window.addEventListener("arasul:open-settings", onOpenSettings);
+    return () => window.removeEventListener("arasul:open-settings", onOpenSettings);
+  }, []);
+
   const screen = (() => {
     if (state.status === "checking") {
       return (
@@ -198,7 +214,12 @@ function AppShell() {
           onOpenSearch={() => { setSearchOpen(true); setPaletteOpen(false); }}
         />
         <SearchPanel open={searchOpen} onClose={() => setSearchOpen(false)} />
-        {settingsOpen && <Settings onClose={() => setSettingsOpen(false)} />}
+        {settingsOpen && (
+          <Settings
+            onClose={() => { setSettingsOpen(false); setSettingsInitialTab(undefined); }}
+            initialTab={settingsInitialTab as never}
+          />
+        )}
         {shortcutsOpen && <ShortcutsOverlay onClose={() => setShortcutsOpen(false)} />}
         {ejected && <DriveEjectedModal mountPoint={ejected} />}
       </div>

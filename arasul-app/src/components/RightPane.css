@@ -194,6 +194,10 @@
 }
 
 .arasul-myhub-error {
+  /* Phase 0.13: anchor with z-index so the floating .arasul-term-search
+     overlay (z-index: 6) can never shadow critical error messages. */
+  position: relative;
+  z-index: 7;
   padding: var(--sp-2) var(--pane-pad-x);
   background: var(--danger-soft);
   color: var(--danger);

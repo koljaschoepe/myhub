@@ -187,8 +187,27 @@ async function runAiItem(editor: Editor, system: string): Promise<void> {
 function matches(item: Item, query: string): boolean {
   if (!query) return true;
   const q = query.toLowerCase();
+
+  // Phase 0.14: fuzzy match — `/tabl` matches "Table", `/summ` matches
+  // "Summarize". Falls back to substring on label or keyword if fuzzy
+  // also fails. Substring still wins ranking-wise because it's checked
+  // first; we keep the same return signature (boolean) so the existing
+  // ordering downstream is unchanged.
   if (item.label.toLowerCase().includes(q)) return true;
-  return item.keywords.some((k) => k.toLowerCase().includes(q));
+  if (item.keywords.some((k) => k.toLowerCase().includes(q))) return true;
+  return fuzzyMatches(item.label.toLowerCase(), q)
+      || item.keywords.some((k) => fuzzyMatches(k.toLowerCase(), q));
+}
+
+/** All chars of `query` appear in `text` in order (not necessarily adjacent). */
+function fuzzyMatches(text: string, query: string): boolean {
+  if (query.length === 0) return true;
+  if (query.length > text.length) return false;
+  let qi = 0;
+  for (let ti = 0; ti < text.length && qi < query.length; ti++) {
+    if (text[ti] === query[qi]) qi++;
+  }
+  return qi === query.length;
 }
 
 type Props = { editor: Editor | null };

@@ -1,24 +1,31 @@
 import { useState, useRef, useEffect } from "react";
+import { Eye, EyeOff } from "lucide-react";
 import { useSession } from "../lib/session";
-import { useFocusTrap } from "../lib/useFocusTrap";
+import { Button, Input, IconButton } from "../components/ui";
 import "./Unlock.css";
 
 /**
  * Phase 1.3 — passphrase-gated unlock screen.
+ * Phase 1.7 (2026-05-11) — migrated to ui/ primitives + added show/hide
+ * password toggle (a Phase 4.2 quick win, easy now that Input has a
+ * `trailing` slot).
  *
  * Shown when vault.enc exists and no session is active. First-run lands
  * in Onboarding (separate screen), not here.
+ *
+ * Note: this is a *full-screen* unlock surface, not a modal — there's no
+ * "outside" to click. The form keeps `role="dialog" aria-modal` so screen
+ * readers treat the passphrase task as the focused interaction.
  */
 export function Unlock() {
   const { unlock } = useSession();
   const [passphrase, setPassphrase] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const [errorNonce, setErrorNonce] = useState(0);
   const [shaking, setShaking] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
-  const formRef = useRef<HTMLFormElement>(null);
-  useFocusTrap(formRef);
 
   useEffect(() => { inputRef.current?.focus(); }, []);
 
@@ -42,7 +49,15 @@ export function Unlock() {
       const msg = typeof err === "object" && err !== null && "kind" in err
         ? (err as { kind: string }).kind
         : String(err);
-      setError(msg === "vault_wrong_passphrase" ? "Wrong passphrase." : `Unlock failed: ${msg}`);
+      // Phase 0.5: map low-level errors to user-friendly text. Anything
+      // we don't recognise gets a clear "try again" framing rather than
+      // exposing a raw Rust error kind to non-coders.
+      let friendly: string;
+      if (msg === "vault_wrong_passphrase") friendly = "Wrong passphrase.";
+      else if (msg === "vault_corrupt") friendly = "Drive unlock file is damaged. Try ejecting and reconnecting the drive.";
+      else if (msg.startsWith("fs_")) friendly = "Couldn't read the drive. Check it's connected and try again.";
+      else friendly = `Unlock failed: ${msg}`;
+      setError(friendly);
       setErrorNonce((n) => n + 1);
       setPassphrase("");
       inputRef.current?.focus();
@@ -54,7 +69,6 @@ export function Unlock() {
   return (
     <div className="arasul-unlock">
       <form
-        ref={formRef}
         className={"arasul-unlock-form" + (shaking ? " shake" : "")}
         onSubmit={submit}
         role="dialog"
@@ -63,22 +77,52 @@ export function Unlock() {
       >
         <div id="unlock-brand" className="arasul-unlock-brand">Arasul</div>
         <div className="arasul-unlock-sub">Welcome back. Unlock your drive.</div>
-        <input
+
+        <Input
           ref={inputRef}
-          type="password"
-          className="arasul-unlock-input"
+          type={showPassword ? "text" : "password"}
+          size="lg"
           placeholder="Passphrase"
           autoComplete="current-password"
           value={passphrase}
           onChange={(e) => setPassphrase(e.target.value)}
           disabled={busy}
+          aria-invalid={!!error}
+          aria-describedby={error ? "unlock-error" : undefined}
+          trailing={
+            <IconButton
+              type="button"
+              label={showPassword ? "Hide passphrase" : "Show passphrase"}
+              variant="ghost"
+              size="sm"
+              showTooltip={false}
+              onClick={() => setShowPassword((v) => !v)}
+              tabIndex={-1}
+            >
+              {showPassword ? <EyeOff /> : <Eye />}
+            </IconButton>
+          }
         />
-        {error && <div className="arasul-unlock-error">{error}</div>}
-        <button type="submit" className="arasul-unlock-btn" disabled={busy || !passphrase}>
-          {busy ? "Unlocking…" : "Unlock"}
-        </button>
+
+        {error && (
+          <div id="unlock-error" className="arasul-unlock-error" role="alert">
+            {error}
+          </div>
+        )}
+
+        <Button
+          type="submit"
+          variant="primary"
+          size="lg"
+          className="w-full"
+          loading={busy}
+          disabled={busy || !passphrase}
+        >
+          {busy ? "Unlocking" : "Unlock"}
+        </Button>
+
         <div className="arasul-unlock-footer">
-          Forgot passphrase? The vault must be recreated — your files are not lost.
+          Forgot your passphrase? You can reset the drive unlock in Settings. Your files stay safe.
         </div>
       </form>
     </div>

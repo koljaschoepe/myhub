@@ -37,7 +37,7 @@ cd myhub-cli && go test ./...
 
 ## Conventions
 
-- **Language:** English only — code, comments, UI strings, docs. Decided 2026-04-24.
+- **Language:** English in code identifiers, comments, commit messages, and docs everywhere. UI strings English under `arasul-app/`, `content/`, `docs/`. Exception (2026-05-11): `myhub-tui/` UI strings may be German (operator preference).
 - **Dates:** ISO 8601 (`YYYY-MM-DD`) in filenames and content.
 - **Naming:** `kebab-case.md` for docs.
 - **Tauri commands:** `#[tauri::command]` in topic-grouped modules (`vault.rs`, `claude.rs`, `workflow.rs`, …); register in `lib.rs`.

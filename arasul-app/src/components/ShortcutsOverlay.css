@@ -5,7 +5,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1200;
+  z-index: var(--z-modal-critical);
   backdrop-filter: blur(4px);
   animation: cmdk-fade var(--motion-fast);
 }

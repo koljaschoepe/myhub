@@ -98,7 +98,7 @@ export function RightPane() {
   if (sessionState.status !== "unlocked") {
     return (
       <div className="arasul-right arasul-right-placeholder">
-        <p>Unlock the vault to open the terminal.</p>
+        <p>Sign in with your Arasul passphrase to start the terminal.</p>
       </div>
     );
   }

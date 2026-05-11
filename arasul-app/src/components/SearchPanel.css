@@ -6,7 +6,7 @@
   align-items: flex-start;
   justify-content: center;
   padding: 80px 24px 24px;
-  z-index: 950;
+  z-index: var(--z-modal-default);
   animation: cmdk-fade var(--motion-fast) ease-out;
 }
 

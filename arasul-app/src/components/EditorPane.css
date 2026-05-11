@@ -326,7 +326,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 200;
+  z-index: var(--z-overlay-editor);
   pointer-events: none;
   animation: drop-in 120ms ease-out;
   border: 2px dashed var(--accent);
@@ -356,7 +356,7 @@
   padding: 8px 14px;
   border-radius: var(--radius);
   font-size: var(--fs-sm);
-  z-index: 220;
+  z-index: calc(var(--z-overlay-editor) + 20);
   animation: toast-in 160ms ease-out;
 }
 .arasul-import-toast-ok  { background: var(--success); color: var(--text-on-accent); }
@@ -373,7 +373,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1100;
+  z-index: var(--z-modal-important);
 }
 .arasul-conflict {
   width: min(420px, 92vw);

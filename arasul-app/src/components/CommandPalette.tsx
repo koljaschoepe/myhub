@@ -1,10 +1,10 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect } from "react";
 import { Command } from "cmdk";
 import { invoke } from "@tauri-apps/api/core";
 import { useWorkspace } from "../lib/workspace";
 import { useSession } from "../lib/session";
-import { useFocusTrap } from "../lib/useFocusTrap";
 import { getRecent } from "../lib/recentFiles";
+import { Dialog, DialogContent } from "./ui";
 import "./CommandPalette.css";
 
 type Project = {
@@ -16,6 +16,12 @@ type Project = {
 /**
  * Multi-mode palette: commands (⌘K), file finder (⌘P), project switcher (⌘⇧P).
  * Modes share the cmdk surface — selecting a command can switch to another mode.
+ *
+ * Phase 1.8 (2026-05-11): migrated to Dialog primitive. Dropped the custom
+ * `arasul-cmdk-overlay` + `arasul-cmdk-box` div wrapper and `useFocusTrap`;
+ * Radix Dialog handles modal semantics, focus trap, Escape, and click-outside
+ * (we still call onOpenChange(false) for the latter so cmdk state resets).
+ * cmdk internals stay untouched — Command/Command.Input/Command.List etc.
  */
 type Mode = "commands" | "projects" | "files";
 
@@ -75,7 +81,7 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
     return () => window.removeEventListener("keydown", onKey);
   }, [onOpenChange]);
 
-  useEffect(() => { if (!open) setMode("commands"); }, [open]);
+  useEffect(() => { if (!open) { setMode("commands"); setQuery(""); } }, [open]);
 
   const setOpen = onOpenChange;
 
@@ -96,11 +102,6 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
       .catch((e) => { console.warn("list_project_files failed:", e); setFiles([]); });
   }, [mode, open, driveRoot, ws.projectSlug]);
 
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef, open);
-
-  if (!open) return null;
-
   const placeholders: Record<Mode, string> = {
     commands: "Type a command or search…",
     projects: "Find project…",
@@ -108,17 +109,18 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
   };
 
   return (
-    <div className="arasul-cmdk-overlay" onClick={() => setOpen(false)}>
-      <div
-        ref={dialogRef}
-        className="arasul-cmdk-box"
-        role="dialog"
-        aria-modal="true"
+    <Dialog open={open} onOpenChange={setOpen}>
+      <DialogContent
+        size="lg"
+        hideCloseButton
+        titleSlot={null}
         aria-label="Command palette"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
+        // Override default Dialog spacing — the palette has its own tight
+        // padding and the cmdk header doesn't want extra gap. Also pin to
+        // top quarter of viewport, palette convention (VS Code / Linear).
+        className="!p-0 !gap-0 !rounded-xl !top-[20vh] !translate-y-0 max-md:!top-[8vh]"
       >
-        <Command label={placeholders[mode]}>
+        <Command label={placeholders[mode]} className="arasul-cmdk-inner">
           <Command.Input
             autoFocus
             placeholder={placeholders[mode]}
@@ -127,7 +129,7 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
             onValueChange={setQuery}
           />
           <Command.List className="arasul-cmdk-list">
-            <Command.Empty>No results.</Command.Empty>
+            <Command.Empty>No matches — try a different search.</Command.Empty>
 
             {mode === "commands" && (
               <>
@@ -156,11 +158,11 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
                   <Command.Item onSelect={async () => {
                     try { await invoke("compile"); } catch (e) { console.warn(e); }
                     setOpen(false);
-                  }}>Compile wiki</Command.Item>
+                  }}>Refresh wiki</Command.Item>
                   <Command.Item onSelect={async () => {
                     try { await invoke("verify"); } catch (e) { console.warn(e); }
                     setOpen(false);
-                  }}>Verify drive</Command.Item>
+                  }}>Check drive</Command.Item>
                   <Command.Item onSelect={async () => {
                     try { await invoke("check_for_update"); } catch (e) { console.warn(e); }
                     setOpen(false);
@@ -234,7 +236,7 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
             )}
           </Command.List>
         </Command>
-      </div>
-    </div>
+      </DialogContent>
+    </Dialog>
   );
 }

@@ -13,6 +13,7 @@ const SECTIONS: Section[] = [
       ["⌘ ⇧ F",       "Search across files"],
       ["⌘ ,",         "Settings"],
       ["⌘ /",         "This shortcuts sheet"],
+      ["⌘ ;",         "Toggle focus mode (minimal UI)"],
       ["Esc",         "Close palette / modal"],
     ],
   },
@@ -25,6 +26,14 @@ const SECTIONS: Section[] = [
       ["⌘ ⇧ M",       "Toggle markdown source mode"],
       ["/",           "Slash menu (block insert)"],
       ["⌘ F",         "Find — code editor, terminal, or markdown source"],
+    ],
+  },
+  {
+    title: "View",
+    rows: [
+      ["⌘ +",         "Zoom in (PDF / image preview)"],
+      ["⌘ −",         "Zoom out (PDF / image preview)"],
+      ["⌘ 0",         "Reset zoom"],
     ],
   },
   {

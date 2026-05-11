@@ -27,7 +27,7 @@ Both share `content/` (Karpathy LLM Wiki + projects), `tooling/` (SSD imaging + 
 1. **No API SDK imports in default code paths.** No `import anthropic`, `from anthropic`, `import openai`, `from openai`, `@anthropic-ai/sdk` anywhere unless the file carries the marker `// arasul:allow-api-sdk` with a justification. Enforced by `.claude/hooks/block-api-imports.sh`.
 2. **AI calls go through `claude` subprocess.** Either interactive PTY or `claude -p` headless. The user's subscription pays. Never harvest, persist, or relay the OAuth token.
 3. **No host writes** outside `~/Library/LaunchAgents/com.myhub.mount.plist` (one file, one Mac, ever). Everything else lives on the SSD.
-4. **English-only** in code, comments, UI strings, and docs (per project decision 2026-04-24).
+4. **English-only** in code identifiers, comments, commit messages, and docs everywhere; in UI strings under `arasul-app/`, `content/`, and `docs/` (decided 2026-04-24). **Exception (2026-05-11): `myhub-tui/` UI strings may be German** — operator preference; code/comments/commits stay English.
 5. **AskUserQuestion for clarifications.** Never plain-text "what do you want?" — always structured multi-choice (per user preference, see `~/.claude/memory`).
 
 ## Sub-project entrypoints

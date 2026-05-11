@@ -252,6 +252,14 @@ function GitActions({ handle, driveRoot, slug, refreshToken, onAfterAction }: {
       <div className="arasul-git-row arasul-git-disconnected">
         <GitBranch size={12} />
         <span>GitHub not connected</span>
+        <button
+          type="button"
+          className="arasul-git-connect"
+          onClick={() => window.dispatchEvent(new CustomEvent("arasul:open-settings", { detail: { tab: "github" } }))}
+          title="Open Settings → GitHub to add a personal access token"
+        >
+          Connect
+        </button>
         <span className="arasul-git-spacer" />
       </div>
     );

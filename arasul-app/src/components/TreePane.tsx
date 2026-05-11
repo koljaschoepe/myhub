@@ -5,7 +5,13 @@ import { ChevronRight, ChevronDown, Folder, FolderOpen, Eye, EyeOff, Search, X,
          Edit2, Trash2, FileText, FolderPlus, ExternalLink, Copy } from "lucide-react";
 import { useWorkspace } from "../lib/workspace";
 import { useSession } from "../lib/session";
-import { ContextMenu, type MenuItem } from "./ContextMenu";
+import {
+  ContextMenu,
+  ContextMenuTrigger,
+  ContextMenuContent,
+  ContextMenuItem,
+  ContextMenuSeparator,
+} from "./ui";
 import { iconForFile } from "../lib/fileIcons";
 import { notify } from "../lib/toast";
 import "./TreePane.css";
@@ -43,7 +49,6 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
   const [expanded, setExpanded] = useState<Record<string, FilteredNode[]>>({});
   const [openFolders, setOpenFolders] = useState<Set<string>>(new Set());
   const [error, setError] = useState<string | null>(null);
-  const [menu, setMenu] = useState<{ x: number; y: number; node: FilteredNode } | null>(null);
   const [renaming, setRenaming] = useState<{ path: string; name: string } | null>(null);
   const [refreshToken, setRefreshToken] = useState(0);
   const [focusIdx, setFocusIdx] = useState(0);
@@ -162,61 +167,81 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
     const FileGlyph = node.kind === "file" ? iconForFile(node.name) : null;
 
     return (
-      <div
-        key={node.path}
-        role="treeitem"
-        aria-level={depth + 1}
-        aria-selected={isSelected}
-        aria-expanded={node.kind === "dir" ? isOpen : undefined}
-        className={"arasul-tree-row"
-          + (isSelected ? " selected" : "")
-          + (isFocused ? " focused" : "")
-        }
-        style={{ paddingLeft: padLeft }}
-        data-idx={idx}
-        onClick={() => {
-          if (isRenaming) return;
-          setFocusIdx(idx);
-          node.kind === "dir" ? void toggleFolder(node) : openFile(node.path);
-        }}
-        onContextMenu={(e) => {
-          e.preventDefault();
-          setFocusIdx(idx);
-          setMenu({ x: e.clientX, y: e.clientY, node });
-        }}
-        title={node.path}
-      >
-        {node.kind === "dir" ? (
-          isOpen ? (
-            <ChevronDown size={12} className="arasul-tree-chev" />
-          ) : (
-            <ChevronRight size={12} className="arasul-tree-chev" />
-          )
-        ) : (
-          <span className="arasul-tree-chev" />
-        )}
-        {node.kind === "dir" ? (
-          isOpen ? <FolderOpen size={14} color={iconColor} /> : <Folder size={14} color={iconColor} />
-        ) : FileGlyph ? (
-          <FileGlyph size={14} color={iconColor} />
-        ) : null}
-        {isRenaming ? (
-          <input
-            className="arasul-tree-rename"
-            value={renaming.name}
-            autoFocus
-            onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
-            onClick={(e) => e.stopPropagation()}
-            onKeyDown={(e) => {
-              if (e.key === "Enter") void commitRename();
-              if (e.key === "Escape") setRenaming(null);
+      <ContextMenu key={node.path}>
+        <ContextMenuTrigger asChild>
+          <div
+            role="treeitem"
+            aria-level={depth + 1}
+            aria-selected={isSelected}
+            aria-expanded={node.kind === "dir" ? isOpen : undefined}
+            className={"arasul-tree-row"
+              + (isSelected ? " selected" : "")
+              + (isFocused ? " focused" : "")
+            }
+            style={{ paddingLeft: padLeft }}
+            data-idx={idx}
+            onClick={() => {
+              if (isRenaming) return;
+              setFocusIdx(idx);
+              node.kind === "dir" ? void toggleFolder(node) : openFile(node.path);
             }}
-            onBlur={() => void commitRename()}
-          />
-        ) : (
-          <span className="arasul-tree-name">{node.name}</span>
-        )}
-      </div>
+            onDoubleClick={(e) => {
+              // Phase 0.7: Finder/Explorer-style rename. Folders ignore (single
+              // click already toggles open/closed). Files enter rename mode.
+              if (isRenaming || node.kind === "dir") return;
+              e.stopPropagation();
+              setRenaming({ path: node.path, name: node.name });
+            }}
+            // Phase 1.9: right-click is handled by ContextMenuTrigger. We
+            // still want the focused-row indicator to follow the right-click.
+            onContextMenu={() => setFocusIdx(idx)}
+            title={node.path}
+          >
+            {node.kind === "dir" ? (
+              isOpen ? (
+                <ChevronDown size={12} className="arasul-tree-chev" />
+              ) : (
+                <ChevronRight size={12} className="arasul-tree-chev" />
+              )
+            ) : (
+              <span className="arasul-tree-chev" />
+            )}
+            {node.kind === "dir" ? (
+              isOpen ? <FolderOpen size={14} color={iconColor} /> : <Folder size={14} color={iconColor} />
+            ) : FileGlyph ? (
+              <FileGlyph size={14} color={iconColor} />
+            ) : null}
+            {isRenaming ? (
+              <input
+                className="arasul-tree-rename"
+                value={renaming.name}
+                autoFocus
+                onChange={(e) => setRenaming({ ...renaming, name: e.target.value })}
+                onClick={(e) => e.stopPropagation()}
+                onFocus={(e) => {
+                  // Phase 0.8: select the basename so the first keystroke
+                  // replaces the whole name (skip the extension to make
+                  // renaming `README.md` → `NOTES.md` a single action).
+                  const v = e.currentTarget.value;
+                  const dot = v.lastIndexOf(".");
+                  if (dot > 0) e.currentTarget.setSelectionRange(0, dot);
+                  else e.currentTarget.select();
+                }}
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") void commitRename();
+                  if (e.key === "Escape") setRenaming(null);
+                }}
+                onBlur={() => void commitRename()}
+              />
+            ) : (
+              <span className="arasul-tree-name">{node.name}</span>
+            )}
+          </div>
+        </ContextMenuTrigger>
+        <ContextMenuContent>
+          {renderMenuItems(node)}
+        </ContextMenuContent>
+      </ContextMenu>
     );
   };
 
@@ -318,60 +343,71 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
     }
   };
 
-  const menuItems = (node: FilteredNode): MenuItem[] => [
-    { type: "item", label: "Rename", icon: <Edit2 size={14} />,
-      onClick: () => setRenaming({ path: node.path, name: node.name }) },
-    { type: "item", label: "Copy path", icon: <Copy size={14} />,
-      onClick: () => {
+  /**
+   * Phase 1.9 (2026-05-11): context-menu items rendered inline per row via
+   * Radix ContextMenu primitives. Gives us free keyboard nav (arrow keys,
+   * Enter, Esc, type-ahead) and submenu support — neither was in the old
+   * custom ContextMenu. The trade-off is one Radix tree per row, but the
+   * Portal-based Content only mounts on right-click so DOM cost is minimal.
+   */
+  const renderMenuItems = (node: FilteredNode) => (
+    <>
+      <ContextMenuItem onSelect={() => setRenaming({ path: node.path, name: node.name })}>
+        <Edit2 /> Rename
+      </ContextMenuItem>
+      <ContextMenuItem onSelect={() => {
         try {
           void navigator.clipboard.writeText(node.path);
           notify.ok("Path copied");
         } catch (e) {
           notify.err("Couldn't copy path", e);
         }
-      } },
-    { type: "item", label: "Reveal in Finder", icon: <ExternalLink size={14} />,
-      onClick: () => void invoke("reveal_in_finder", { path: node.path })
-        .catch((e) => notify.err("Couldn't reveal in Finder", e)) },
-    { type: "separator" },
-    ...(node.kind === "dir" ? [
-      {
-        type: "item" as const, label: "New file here", icon: <FileText size={14} />,
-        onClick: async () => {
-          const name = window.prompt("New file name", "untitled.md");
-          if (!name) return;
-          const p = `${node.path}/${name}`;
-          try {
-            await invoke("write_file", { path: p, content: "" });
-            refresh();
-            openFile(p);
-          } catch (e) {
-            notify.err("Couldn't create file", e);
-          }
-        },
-      },
-      {
-        type: "item" as const, label: "New folder here", icon: <FolderPlus size={14} />,
-        onClick: async () => {
-          const name = window.prompt("Folder name", "untitled");
-          if (!name) return;
-          // No dedicated mkdir command — write a .gitkeep placeholder so the
-          // empty dir survives. The user can delete the placeholder once they
-          // add real files.
-          const placeholder = `${node.path}/${name}/.gitkeep`;
-          try {
-            await invoke("write_file", { path: placeholder, content: "" });
-            refresh();
-          } catch (e) {
-            notify.err("Couldn't create folder", e);
-          }
-        },
-      },
-      { type: "separator" as const },
-    ] : []),
-    {
-      type: "item", label: "Delete", destructive: true, icon: <Trash2 size={14} />,
-      onClick: async () => {
+      }}>
+        <Copy /> Copy path
+      </ContextMenuItem>
+      <ContextMenuItem onSelect={() =>
+        void invoke("reveal_in_finder", { path: node.path })
+          .catch((e) => notify.err("Couldn't reveal in Finder", e))
+      }>
+        <ExternalLink /> Reveal in Finder
+      </ContextMenuItem>
+      <ContextMenuSeparator />
+      {node.kind === "dir" && (
+        <>
+          <ContextMenuItem onSelect={async () => {
+            const name = window.prompt("New file name", "untitled.md");
+            if (!name) return;
+            const p = `${node.path}/${name}`;
+            try {
+              await invoke("write_file", { path: p, content: "" });
+              refresh();
+              openFile(p);
+            } catch (e) {
+              notify.err("Couldn't create file", e);
+            }
+          }}>
+            <FileText /> New file here
+          </ContextMenuItem>
+          <ContextMenuItem onSelect={async () => {
+            const name = window.prompt("Folder name", "untitled");
+            if (!name) return;
+            // No dedicated mkdir command — write a .gitkeep placeholder so the
+            // empty dir survives. The user can delete the placeholder once they
+            // add real files.
+            const placeholder = `${node.path}/${name}/.gitkeep`;
+            try {
+              await invoke("write_file", { path: placeholder, content: "" });
+              refresh();
+            } catch (e) {
+              notify.err("Couldn't create folder", e);
+            }
+          }}>
+            <FolderPlus /> New folder here
+          </ContextMenuItem>
+          <ContextMenuSeparator />
+        </>
+      )}
+      <ContextMenuItem destructive onSelect={async () => {
         if (!window.confirm(`Move "${node.name}" to Trash?`)) return;
         try {
           await invoke("delete", { path: node.path });
@@ -379,9 +415,11 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
         } catch (e) {
           notify.err(`Couldn't delete "${node.name}"`, e);
         }
-      },
-    },
-  ];
+      }}>
+        <Trash2 /> Delete
+      </ContextMenuItem>
+    </>
+  );
 
   if (sessionState.status !== "unlocked") {
     return <div className="arasul-tree-empty">Vault locked</div>;
@@ -473,14 +511,6 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
           visible.map(({ node, depth }, idx) => renderRow(node, depth, idx))
         )}
       </div>
-      {menu && (
-        <ContextMenu
-          x={menu.x}
-          y={menu.y}
-          items={menuItems(menu.node)}
-          onClose={() => setMenu(null)}
-        />
-      )}
     </div>
   );
 }

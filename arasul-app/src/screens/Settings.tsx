@@ -1,10 +1,29 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { useSession } from "../lib/session";
 import { getTheme, setTheme, type ThemeChoice } from "../lib/theme";
 import { getDensity, setDensity, type DensityChoice } from "../lib/density";
-import { useFocusTrap } from "../lib/useFocusTrap";
 import { notify } from "../lib/toast";
+import {
+  Dialog,
+  DialogContent,
+  Tabs,
+  TabsList,
+  TabsTrigger,
+  TabsContent,
+  Button,
+  Input,
+  Textarea,
+  Select,
+  SelectTrigger,
+  SelectContent,
+  SelectItem,
+  Switch,
+  RadioGroup,
+  RadioGroupItem,
+  FormField,
+  Badge,
+} from "../components/ui";
 import "./Settings.css";
 
 type Tab =
@@ -58,61 +77,116 @@ type Stats = { notes: number; projects: number; lines: number };
 /**
  * Settings — 11-category sidebar+pane modal.
  *
- * Open via ⌘, or the palette → "Settings". Each tab is a thin component
- * wired to `get_config` / `set_config` (Rust merges JSON patches into
- * `memory/config.toml` at the drive root).
+ * Phase 1.6 (2026-05-11): migrated to the new design-system primitives
+ * (Dialog + Tabs + Button + Input + Select + Switch + RadioGroup +
+ * FormField + Badge). Drops the custom focus-trap (Radix Dialog handles
+ * it), the bespoke Toggle helper (Switch + FormField replaces), and the
+ * eleven inline `<select>` elements (Radix Select gives consistent
+ * cross-platform styling).
+ *
+ * Legacy CSS rules under `.arasul-settings-tab-body` are kept for layout
+ * affordances reused below (`.arasul-kv`, `.arasul-actions`, `.arasul-muted`,
+ * `.arasul-error`). Form-control rules are now obsolete and will be cleaned
+ * up during the next Settings.css audit.
  */
-export function Settings({ onClose }: { onClose: () => void }) {
-  const [tab, setTab] = useState<Tab>("general");
-  const dialogRef = useRef<HTMLDivElement>(null);
-  useFocusTrap(dialogRef);
+export function Settings({
+  onClose,
+  initialTab,
+}: {
+  onClose: () => void;
+  initialTab?: Tab;
+}) {
   return (
-    <div className="arasul-settings-overlay" onClick={onClose}>
-      <div
-        ref={dialogRef}
-        className="arasul-settings"
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby="settings-title"
-        tabIndex={-1}
-        onClick={(e) => e.stopPropagation()}
+    <Dialog open={true} onOpenChange={(o) => !o && onClose()}>
+      <DialogContent
+        size="xl"
+        titleSlot={null}
+        hideCloseButton
+        // Override the default DialogContent padding/gap so the sidebar +
+        // body can sit flush against the rounded edge. Height is fixed to
+        // match the legacy Settings dimensions.
+        className="p-0 gap-0 h-[min(620px,90vh)] max-h-[90vh] overflow-hidden bg-[color:var(--bg-pane)]"
       >
-        <aside className="arasul-settings-sidebar">
-          <div id="settings-title" className="arasul-settings-title">Settings</div>
-          {TAB_ORDER.map((t) => (
-            <button
-              key={t}
-              type="button"
-              className={"arasul-settings-tab" + (t === tab ? " active" : "")}
-              onClick={() => setTab(t)}
+        <Tabs
+          orientation="vertical"
+          defaultValue={initialTab ?? "general"}
+          className="flex h-full max-md:flex-col"
+        >
+          <aside className="w-[200px] shrink-0 flex flex-col p-3 bg-canvas border-r border-border-subtle max-md:w-full max-md:flex-row max-md:overflow-x-auto max-md:border-r-0 max-md:border-b max-md:border-border-subtle max-md:p-2">
+            <div
+              id="settings-title"
+              className="px-3 py-2 mb-3 text-[length:var(--text-h4)] font-semibold text-fg max-md:hidden"
             >
-              {LABELS[t]}
-            </button>
-          ))}
-          <div className="arasul-settings-spacer" />
-          <button type="button" className="arasul-btn ghost" onClick={onClose}>Close</button>
-        </aside>
-        <main className="arasul-settings-body">
-          {tab === "general"    && <GeneralTab />}
-          {tab === "appearance" && <AppearanceTab />}
-          {tab === "editor"     && <EditorTab />}
-          {tab === "terminal"   && <TerminalTab />}
-          {tab === "claude"     && <ClaudeTab />}
-          {tab === "github"     && <GithubTab />}
-          {tab === "drive"      && <DriveTab />}
-          {tab === "vault"      && <VaultTab />}
-          {tab === "privacy"    && <PrivacyTab />}
-          {tab === "updates"    && <UpdatesTab />}
-          {tab === "about"      && <AboutTab />}
-        </main>
-      </div>
+              Settings
+            </div>
+            <TabsList
+              orientation="vertical"
+              className="w-full !border-b-0 !h-auto gap-0.5 max-md:w-auto max-md:flex-row"
+            >
+              {TAB_ORDER.map((t) => (
+                <TabsTrigger
+                  key={t}
+                  value={t}
+                  className="max-md:shrink-0 max-md:whitespace-nowrap"
+                >
+                  {LABELS[t]}
+                </TabsTrigger>
+              ))}
+            </TabsList>
+            <div className="flex-1 max-md:hidden" />
+            <Button variant="ghost" size="sm" onClick={onClose} className="max-md:hidden">
+              Close
+            </Button>
+          </aside>
+
+          <main className="flex-1 min-w-0 overflow-y-auto px-8 py-6 bg-[color:var(--bg-pane)] max-md:px-5 max-md:py-4">
+            <TabsContent value="general"   className="!mt-0"><GeneralTab /></TabsContent>
+            <TabsContent value="appearance" className="!mt-0"><AppearanceTab /></TabsContent>
+            <TabsContent value="editor"    className="!mt-0"><EditorTab /></TabsContent>
+            <TabsContent value="terminal"  className="!mt-0"><TerminalTab /></TabsContent>
+            <TabsContent value="claude"    className="!mt-0"><ClaudeTab /></TabsContent>
+            <TabsContent value="github"    className="!mt-0"><GithubTab /></TabsContent>
+            <TabsContent value="drive"     className="!mt-0"><DriveTab /></TabsContent>
+            <TabsContent value="vault"     className="!mt-0"><VaultTab /></TabsContent>
+            <TabsContent value="privacy"   className="!mt-0"><PrivacyTab /></TabsContent>
+            <TabsContent value="updates"   className="!mt-0"><UpdatesTab /></TabsContent>
+            <TabsContent value="about"     className="!mt-0"><AboutTab /></TabsContent>
+          </main>
+        </Tabs>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+/* ============================================================
+ * Shared layout
+ * ============================================================ */
+
+function TabBody({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="max-w-[560px] flex flex-col gap-4">
+      <h2 className="text-[length:var(--text-h3)] font-semibold text-fg m-0">{title}</h2>
+      {children}
     </div>
   );
 }
 
-// ============================================================
-// General — name, default shell
-// ============================================================
+function Section({ title, children }: { title?: string; children: React.ReactNode }) {
+  return (
+    <section className="flex flex-col gap-3">
+      {title && (
+        <h3 className="text-[length:var(--text-caption)] font-medium text-fg uppercase tracking-wide m-0">
+          {title}
+        </h3>
+      )}
+      {children}
+    </section>
+  );
+}
+
+/* ============================================================
+ * General — name, default shell
+ * ============================================================ */
 
 function GeneralTab() {
   const { driveRoot } = useSession();
@@ -143,82 +217,110 @@ function GeneralTab() {
   };
 
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>General</h2>
-      <label>Your name
-        <input value={name} onChange={(e) => setName(e.target.value)} placeholder="Your name" />
-      </label>
-      <label>Default shell
-        <select value={defaultShell} onChange={(e) => setDefaultShell(e.target.value)}>
-          <option>bash</option>
-          <option>zsh</option>
-          <option>fish</option>
-          <option>powershell.exe</option>
-        </select>
-      </label>
-      <button type="button" className="arasul-btn primary" onClick={save} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
-      </button>
-    </div>
+    <TabBody title="General">
+      <FormField label="Your name">
+        {(props) => (
+          <Input
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            placeholder="Your name"
+            maxLength={50}
+            {...props}
+          />
+        )}
+      </FormField>
+
+      <FormField label="Default shell" description="Used when opening new terminal tabs.">
+        {(props) => (
+          <Select value={defaultShell} onValueChange={setDefaultShell}>
+            <SelectTrigger id={props.id} aria-describedby={props["aria-describedby"]}>
+              {defaultShell}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="bash">bash</SelectItem>
+              <SelectItem value="zsh">zsh</SelectItem>
+              <SelectItem value="fish">fish</SelectItem>
+              <SelectItem value="powershell.exe">powershell.exe</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </FormField>
+
+      <div>
+        <Button variant="primary" onClick={save} loading={saving}>
+          {saving ? "Saving" : "Save"}
+        </Button>
+      </div>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Appearance — theme, density (live; persisted in localStorage)
-// ============================================================
+/* ============================================================
+ * Appearance — theme, density (live, localStorage-persisted)
+ * ============================================================ */
 
 function AppearanceTab() {
   const [theme, setThemeState] = useState<ThemeChoice>(() => getTheme());
   const [density, setDensityState] = useState<DensityChoice>(() => getDensity());
 
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Appearance</h2>
-
-      <section>
-        <h3>Theme</h3>
-        <p className="arasul-muted">System matches your Mac's light/dark setting and switches automatically.</p>
-        <div className="arasul-theme-group" role="radiogroup" aria-label="Theme">
+    <TabBody title="Appearance">
+      <Section title="Theme">
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+          System matches your Mac's light/dark setting and switches automatically.
+        </p>
+        <RadioGroup
+          value={theme}
+          onValueChange={(v) => { setThemeState(v as ThemeChoice); setTheme(v as ThemeChoice); }}
+          className="grid-flow-col w-fit"
+          aria-label="Theme"
+        >
           {(["system", "dark", "light"] as ThemeChoice[]).map((opt) => (
-            <button
+            <label
               key={opt}
-              type="button"
-              role="radio"
-              aria-checked={theme === opt}
-              className={"arasul-theme-opt" + (theme === opt ? " active" : "")}
-              onClick={() => { setThemeState(opt); setTheme(opt); }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md border border-border-default bg-elevated cursor-pointer data-[state=checked]:border-accent data-[state=checked]:bg-accent-soft data-[state=checked]:text-accent has-[input:focus-visible]:[box-shadow:var(--focus-ring)]"
+              data-state={theme === opt ? "checked" : "unchecked"}
             >
-              {opt === "system" ? "System" : opt === "dark" ? "Dark" : "Light"}
-            </button>
+              <RadioGroupItem value={opt} className="sr-only" />
+              <span className="text-[length:var(--text-body-sm)] font-medium">
+                {opt === "system" ? "System" : opt === "dark" ? "Dark" : "Light"}
+              </span>
+            </label>
           ))}
-        </div>
-      </section>
+        </RadioGroup>
+      </Section>
 
-      <section>
-        <h3>UI density</h3>
-        <p className="arasul-muted">Tighten or loosen spacing across the whole app. Useful on small laptops.</p>
-        <div className="arasul-theme-group" role="radiogroup" aria-label="Density">
+      <Section title="UI density">
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+          Tighten or loosen spacing across the whole app. Useful on small laptops.
+        </p>
+        <RadioGroup
+          value={density}
+          onValueChange={(v) => { setDensityState(v as DensityChoice); setDensity(v as DensityChoice); }}
+          className="grid-flow-col w-fit"
+          aria-label="Density"
+        >
           {(["compact", "normal", "spacious"] as DensityChoice[]).map((opt) => (
-            <button
+            <label
               key={opt}
-              type="button"
-              role="radio"
-              aria-checked={density === opt}
-              className={"arasul-theme-opt" + (density === opt ? " active" : "")}
-              onClick={() => { setDensityState(opt); setDensity(opt); }}
+              className="inline-flex items-center gap-2 px-4 py-1.5 rounded-md border border-border-default bg-elevated cursor-pointer data-[state=checked]:border-accent data-[state=checked]:bg-accent-soft data-[state=checked]:text-accent has-[input:focus-visible]:[box-shadow:var(--focus-ring)]"
+              data-state={density === opt ? "checked" : "unchecked"}
             >
-              {opt[0].toUpperCase() + opt.slice(1)}
-            </button>
+              <RadioGroupItem value={opt} className="sr-only" />
+              <span className="text-[length:var(--text-body-sm)] font-medium">
+                {opt[0].toUpperCase() + opt.slice(1)}
+              </span>
+            </label>
           ))}
-        </div>
-      </section>
-    </div>
+        </RadioGroup>
+      </Section>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Editor — font size, line numbers, word wrap (persisted)
-// ============================================================
+/* ============================================================
+ * Editor — font size, line numbers, word wrap (persisted)
+ * ============================================================ */
 
 type EditorPrefs = {
   font_size: number;
@@ -254,45 +356,63 @@ function EditorTab() {
   };
 
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Editor</h2>
-      <label>Font size
-        <select
-          value={prefs.font_size}
-          onChange={(e) => setPrefs({ ...prefs, font_size: Number(e.target.value) })}
-        >
-          {[12, 13, 14, 15, 16, 18, 20].map((n) => <option key={n} value={n}>{n} px</option>)}
-        </select>
-      </label>
-      <label>Default view
-        <select
-          value={prefs.default_view}
-          onChange={(e) => setPrefs({ ...prefs, default_view: e.target.value as EditorPrefs["default_view"] })}
-        >
-          <option value="wysiwyg">WYSIWYG (formatted)</option>
-          <option value="source">Source (raw markdown)</option>
-        </select>
-      </label>
-      <Toggle
+    <TabBody title="Editor">
+      <FormField label="Font size">
+        {(props) => (
+          <Select
+            value={String(prefs.font_size)}
+            onValueChange={(v) => setPrefs({ ...prefs, font_size: Number(v) })}
+          >
+            <SelectTrigger id={props.id}>{prefs.font_size} px</SelectTrigger>
+            <SelectContent>
+              {[12, 13, 14, 15, 16, 18, 20].map((n) => (
+                <SelectItem key={n} value={String(n)}>{n} px</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </FormField>
+
+      <FormField label="Default view" description="WYSIWYG renders formatting; Source shows raw markdown.">
+        {(props) => (
+          <Select
+            value={prefs.default_view}
+            onValueChange={(v) => setPrefs({ ...prefs, default_view: v as EditorPrefs["default_view"] })}
+          >
+            <SelectTrigger id={props.id}>
+              {prefs.default_view === "wysiwyg" ? "WYSIWYG (formatted)" : "Source (raw markdown)"}
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="wysiwyg">WYSIWYG (formatted)</SelectItem>
+              <SelectItem value="source">Source (raw markdown)</SelectItem>
+            </SelectContent>
+          </Select>
+        )}
+      </FormField>
+
+      <ToggleRow
         label="Show line numbers in code editor"
         checked={prefs.line_numbers}
         onChange={(v) => setPrefs({ ...prefs, line_numbers: v })}
       />
-      <Toggle
+      <ToggleRow
         label="Wrap long lines"
         checked={prefs.word_wrap}
         onChange={(v) => setPrefs({ ...prefs, word_wrap: v })}
       />
-      <button type="button" className="arasul-btn primary" onClick={save} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
-      </button>
-    </div>
+
+      <div>
+        <Button variant="primary" onClick={save} loading={saving}>
+          {saving ? "Saving" : "Save"}
+        </Button>
+      </div>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Terminal — font size, default cols/rows (persisted)
-// ============================================================
+/* ============================================================
+ * Terminal — font size, default cols/rows (persisted)
+ * ============================================================ */
 
 type TerminalPrefs = {
   font_size: number;
@@ -324,48 +444,62 @@ function TerminalTab() {
     } finally { setSaving(false); }
   };
 
+  const numberSelect = (
+    field: keyof TerminalPrefs,
+    options: number[],
+    suffix?: string,
+  ) => (
+    <Select
+      value={String(prefs[field])}
+      onValueChange={(v) => setPrefs({ ...prefs, [field]: Number(v) })}
+    >
+      <SelectTrigger>
+        {prefs[field].toLocaleString()}{suffix ? ` ${suffix}` : ""}
+      </SelectTrigger>
+      <SelectContent>
+        {options.map((n) => (
+          <SelectItem key={n} value={String(n)}>
+            {n.toLocaleString()}{suffix ? ` ${suffix}` : ""}
+          </SelectItem>
+        ))}
+      </SelectContent>
+    </Select>
+  );
+
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Terminal</h2>
-      <p className="arasul-muted">Defaults applied to new terminal tabs. Existing tabs stay as they are.</p>
-      <label>Font size
-        <select
-          value={prefs.font_size}
-          onChange={(e) => setPrefs({ ...prefs, font_size: Number(e.target.value) })}
-        >
-          {[11, 12, 13, 14, 15, 16].map((n) => <option key={n} value={n}>{n} px</option>)}
-        </select>
-      </label>
-      <label>Default columns
-        <select value={prefs.cols} onChange={(e) => setPrefs({ ...prefs, cols: Number(e.target.value) })}>
-          {[80, 100, 120, 140, 160, 200].map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </label>
-      <label>Default rows
-        <select value={prefs.rows} onChange={(e) => setPrefs({ ...prefs, rows: Number(e.target.value) })}>
-          {[20, 24, 30, 40, 50].map((n) => <option key={n} value={n}>{n}</option>)}
-        </select>
-      </label>
-      <label>Scrollback (lines)
-        <select value={prefs.scrollback} onChange={(e) => setPrefs({ ...prefs, scrollback: Number(e.target.value) })}>
-          {[500, 1000, 2500, 5000, 10000].map((n) => <option key={n} value={n}>{n.toLocaleString()}</option>)}
-        </select>
-      </label>
-      <button type="button" className="arasul-btn primary" onClick={save} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
-      </button>
-    </div>
+    <TabBody title="Terminal">
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+        Defaults applied to new terminal tabs. Existing tabs stay as they are.
+      </p>
+
+      <FormField label="Font size">{() => numberSelect("font_size", [11, 12, 13, 14, 15, 16], "px")}</FormField>
+      <FormField label="Default columns">{() => numberSelect("cols", [80, 100, 120, 140, 160, 200])}</FormField>
+      <FormField label="Default rows">{() => numberSelect("rows", [20, 24, 30, 40, 50])}</FormField>
+      <FormField label="Scrollback (lines)">{() => numberSelect("scrollback", [500, 1000, 2500, 5000, 10000])}</FormField>
+
+      <div>
+        <Button variant="primary" onClick={save} loading={saving}>
+          {saving ? "Saving" : "Save"}
+        </Button>
+      </div>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Claude AI — model, temperature, system prompt (persisted)
-// ============================================================
+/* ============================================================
+ * Claude AI — model, temperature, system prompt (persisted)
+ * ============================================================ */
 
 type ClaudePrefs = {
   model: string;
   temperature: number;
   system_prompt: string;
+};
+
+const MODEL_LABEL: Record<string, string> = {
+  "claude-opus-4-7": "Opus 4.7 — most capable",
+  "claude-sonnet-4-6": "Sonnet 4.6 — fast + balanced",
+  "claude-haiku-4-5-20251001": "Haiku 4.5 — fastest, lowest cost",
 };
 
 function ClaudeTab() {
@@ -394,52 +528,76 @@ function ClaudeTab() {
   };
 
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Claude AI</h2>
-      <p className="arasul-muted">
+    <TabBody title="Claude AI">
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
         Settings used when Arasul talks to Claude. Defaults are tuned for general writing
         and code work.
       </p>
 
-      <label>Model
-        <select value={prefs.model} onChange={(e) => setPrefs({ ...prefs, model: e.target.value })}>
-          <option value="claude-opus-4-7">Opus 4.7 — most capable</option>
-          <option value="claude-sonnet-4-6">Sonnet 4.6 — fast + balanced</option>
-          <option value="claude-haiku-4-5-20251001">Haiku 4.5 — fastest, lowest cost</option>
-        </select>
-      </label>
+      <FormField label="Model">
+        {(props) => (
+          <Select value={prefs.model} onValueChange={(v) => setPrefs({ ...prefs, model: v })}>
+            <SelectTrigger id={props.id}>{MODEL_LABEL[prefs.model] ?? prefs.model}</SelectTrigger>
+            <SelectContent>
+              {Object.entries(MODEL_LABEL).map(([id, label]) => (
+                <SelectItem key={id} value={id}>{label}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+      </FormField>
 
-      <label>Temperature
-        <input
-          type="range" min={0} max={2} step={0.1}
-          value={prefs.temperature}
-          onChange={(e) => setPrefs({ ...prefs, temperature: Number(e.target.value) })}
-        />
-      </label>
-      <p className="arasul-muted" style={{ marginTop: -4 }}>
-        <code>{prefs.temperature.toFixed(1)}</code> — lower means consistent answers,
-        higher means more creative variation. <strong>1.0</strong> is a good default.
-      </p>
+      <FormField
+        label={
+          <span className="flex items-center justify-between w-full">
+            <span>Temperature</span>
+            <span className="text-fg-muted font-mono tabular-nums">{prefs.temperature.toFixed(1)}</span>
+          </span>
+        }
+        description={
+          <>
+            Lower means consistent answers, higher means more creative variation.{" "}
+            <strong>1.0</strong> is a good default.
+          </>
+        }
+        descriptionPosition="below"
+      >
+        {(props) => (
+          <input
+            type="range"
+            min={0} max={2} step={0.1}
+            value={prefs.temperature}
+            onChange={(e) => setPrefs({ ...prefs, temperature: Number(e.target.value) })}
+            className="w-full accent-[color:var(--accent)]"
+            {...props}
+          />
+        )}
+      </FormField>
 
-      <label>Custom system prompt (optional)
-        <textarea
-          rows={4}
-          value={prefs.system_prompt}
-          onChange={(e) => setPrefs({ ...prefs, system_prompt: e.target.value })}
-          placeholder="e.g. 'You are a helpful writing assistant. Be concise.'"
-        />
-      </label>
+      <FormField label="Custom system prompt (optional)">
+        {(props) => (
+          <Textarea
+            rows={4}
+            value={prefs.system_prompt}
+            onChange={(e) => setPrefs({ ...prefs, system_prompt: e.target.value })}
+            placeholder="e.g. 'You are a helpful writing assistant. Be concise.'"
+            {...props}
+          />
+        )}
+      </FormField>
 
-      <button type="button" className="arasul-btn primary" onClick={save} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
-      </button>
-    </div>
+      <div>
+        <Button variant="primary" onClick={save} loading={saving}>
+          {saving ? "Saving" : "Save"}
+        </Button>
+      </div>
+    </TabBody>
   );
 }
 
-// ============================================================
-// GitHub — token + commit message template
-// ============================================================
+/* ============================================================
+ * GitHub — token + commit message template
+ * ============================================================ */
 
 function GithubTab() {
   const { state, driveRoot } = useSession();
@@ -505,80 +663,99 @@ function GithubTab() {
   };
 
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>GitHub</h2>
-      <p className="arasul-muted">
+    <TabBody title="GitHub">
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
         Connect your GitHub account once — projects can then be pushed/pulled with one click,
         and creating a new project automatically provisions a private repo.
       </p>
 
       {account ? (
-        <section>
-          <h3>Connected</h3>
+        <Section title="Connected">
           <div className="arasul-kv">
             <div><span>Login</span><span>{account.login}</span></div>
             {account.name && <div><span>Name</span><span>{account.name}</span></div>}
           </div>
-          <div className="arasul-actions">
-            <button type="button" className="arasul-btn ghost" onClick={disconnect} disabled={busy}>
+          <div>
+            <Button variant="ghost" onClick={disconnect} loading={busy}>
               Disconnect
-            </button>
+            </Button>
           </div>
-        </section>
+        </Section>
       ) : (
-        <section>
-          <h3>Personal Access Token</h3>
-          <p className="arasul-muted">
+        <Section title="Personal Access Token">
+          <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
             Create one at{" "}
-            <a href="https://github.com/settings/personal-access-tokens/new" target="_blank" rel="noreferrer">
+            <a
+              href="https://github.com/settings/personal-access-tokens/new"
+              target="_blank" rel="noreferrer"
+              className="text-accent underline-offset-2 hover:underline"
+            >
               github.com → Settings → Developer settings → Fine-grained tokens
             </a>{" "}
             with the following permissions:
           </p>
-          <ul className="arasul-muted">
+          <ul className="pl-6 m-0 text-[length:var(--text-body-sm)] text-fg-muted leading-[1.6]">
             <li>Repository · Contents · <strong>Read &amp; Write</strong></li>
             <li>Repository · Metadata · <strong>Read</strong></li>
             <li>Account · Administration · <strong>Read &amp; Write</strong> <em>(for repo creation)</em></li>
           </ul>
-          <label>Token
-            <input
-              type="password" value={token}
-              onChange={(e) => setToken(e.target.value)}
-              placeholder="github_pat_…" autoComplete="off" spellCheck={false}
-            />
-          </label>
-          <button type="button" className="arasul-btn primary" onClick={connect} disabled={busy || !token.trim() || !handle}>
-            {busy ? "Checking…" : "Connect"}
-          </button>
-        </section>
+          <FormField label="Token">
+            {(props) => (
+              <Input
+                type="password"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="github_pat_…"
+                autoComplete="off"
+                spellCheck={false}
+                {...props}
+              />
+            )}
+          </FormField>
+          <div>
+            <Button
+              variant="primary"
+              onClick={connect}
+              loading={busy}
+              disabled={busy || !token.trim() || !handle}
+            >
+              {busy ? "Checking" : "Connect"}
+            </Button>
+          </div>
+        </Section>
       )}
 
-      <section>
-        <h3>Defaults for new projects</h3>
-        <Toggle
+      <Section title="Defaults for new projects">
+        <ToggleRow
           label="Auto-create new GitHub repos as private"
           checked={defaultPrivate}
           onChange={setDefaultPrivate}
         />
-        <label>Commit message template
-          <input
-            value={commitTemplate}
-            onChange={(e) => setCommitTemplate(e.target.value)}
-            placeholder="Update from Arasul · {ts}"
-          />
-        </label>
-        <p className="arasul-muted">
-          Use <code>{"{ts}"}</code> for the timestamp. Used when you click Push without typing a message.
-        </p>
-        <button type="button" className="arasul-btn primary" onClick={saveDefaults}>Save defaults</button>
-      </section>
-    </div>
+        <FormField
+          label="Commit message template"
+          description={<>Use <code>{"{ts}"}</code> for the timestamp. Used when you click Push without typing a message.</>}
+          descriptionPosition="below"
+        >
+          {(props) => (
+            <Input
+              value={commitTemplate}
+              onChange={(e) => setCommitTemplate(e.target.value)}
+              placeholder="Update from Arasul · {ts}"
+              {...props}
+            />
+          )}
+        </FormField>
+        <div>
+          <Button variant="primary" onClick={saveDefaults}>Save defaults</Button>
+        </div>
+      </Section>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Drive — root, free space, eject, auto-launch, stats (absorbs Memory tab)
-// ============================================================
+/* ============================================================
+ * Drive — root, free space, eject, auto-launch, stats
+ * ============================================================ */
 
 function DriveTab() {
   const { driveRoot } = useSession();
@@ -606,11 +783,8 @@ function DriveTab() {
   };
 
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Drive</h2>
-
-      <section>
-        <h3>This drive</h3>
+    <TabBody title="Drive">
+      <Section title="This drive">
         <div className="arasul-kv">
           <div><span>Mount point</span><span>{driveRoot}</span></div>
           {health && <div><span>Free space</span><span>{health.drive_free_mb.toLocaleString()} MB</span></div>}
@@ -618,53 +792,76 @@ function DriveTab() {
           {stats && <div><span>Notes</span><span>{stats.notes}</span></div>}
           {stats && <div><span>Lines of markdown</span><span>{stats.lines.toLocaleString()}</span></div>}
         </div>
-      </section>
+      </Section>
 
-      <section>
-        <h3>Auto-launch on this Mac</h3>
-        <p className="arasul-muted">
+      <Section title="Auto-launch on this Mac">
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
           When enabled, plugging this drive into this Mac opens Arasul automatically.
           Per-computer setting — you can install or remove it any time.
         </p>
-        <button type="button" className="arasul-btn primary" onClick={toggleAutoLaunch}
-                disabled={autoLaunchBusy || autoLaunchInstalled === null}>
-          {autoLaunchBusy ? "Working…" :
-           autoLaunchInstalled === null ? "Checking…" :
-           autoLaunchInstalled ? "Remove auto-launch" : "Install auto-launch"}
-        </button>
-      </section>
+        <div>
+          <Button
+            variant="primary"
+            onClick={toggleAutoLaunch}
+            loading={autoLaunchBusy}
+            disabled={autoLaunchBusy || autoLaunchInstalled === null}
+          >
+            {autoLaunchBusy ? "Working" :
+             autoLaunchInstalled === null ? "Checking" :
+             autoLaunchInstalled ? "Remove auto-launch" : "Install auto-launch"}
+          </Button>
+        </div>
+      </Section>
 
       {health && (
-        <section>
-          <h3>Health</h3>
+        <Section title="Health">
           <div className="arasul-kv">
-            <div><span>Vault present</span><span>{health.vault_present ? "yes" : "no"}</span></div>
-            <div><span>Claude binary</span><span>{health.claude_binary_present ? "yes" : "no"}</span></div>
-            <div><span>Memory consistent</span><span>{health.memory_consistent ? "yes" : "no"}</span></div>
+            <div>
+              <span>Vault present</span>
+              <Badge tone={health.vault_present ? "success" : "danger"}>
+                {health.vault_present ? "Yes" : "No"}
+              </Badge>
+            </div>
+            <div>
+              <span>Claude binary</span>
+              <Badge tone={health.claude_binary_present ? "success" : "warning"}>
+                {health.claude_binary_present ? "Yes" : "No"}
+              </Badge>
+            </div>
+            <div>
+              <span>Memory consistent</span>
+              <Badge tone={health.memory_consistent ? "success" : "warning"}>
+                {health.memory_consistent ? "Yes" : "No"}
+              </Badge>
+            </div>
           </div>
           {health.issues.length > 0 && (
             <>
-              <h3>Issues</h3>
-              <ul>{health.issues.map((i) => <li key={i}>{i}</li>)}</ul>
+              <h3 className="text-[length:var(--text-caption)] font-medium text-fg uppercase tracking-wide m-0 mt-3">
+                Issues
+              </h3>
+              <ul className="pl-6 m-0 text-[length:var(--text-body-sm)] text-danger leading-[1.6]">
+                {health.issues.map((i) => <li key={i}>{i}</li>)}
+              </ul>
             </>
           )}
-        </section>
+        </Section>
       )}
-    </div>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Vault — change passphrase, auto-lock timeout, lock now
-// ============================================================
+/* ============================================================
+ * Vault — change passphrase, auto-lock timeout, lock now
+ * ============================================================ */
 
 function VaultTab() {
   const { lock, state, driveRoot } = useSession();
   const [oldPw, setOldPw] = useState("");
   const [newPw, setNewPw] = useState("");
   const [confirm, setConfirm] = useState("");
-  const [msg, setMsg] = useState<string | null>(null);
-  const [autoLockMin, setAutoLockMin] = useState<number>(0); // 0 = never
+  const [error, setError] = useState<string | null>(null);
+  const [autoLockMin, setAutoLockMin] = useState<number>(0);
 
   useEffect(() => {
     void invoke<{ vault?: { auto_lock_minutes?: number } }>("get_config", { driveRoot })
@@ -673,9 +870,9 @@ function VaultTab() {
   }, [driveRoot]);
 
   const changePassphrase = async () => {
-    setMsg(null);
-    if (newPw !== confirm) { setMsg("Passphrases don't match."); return; }
-    if (newPw.length < 4) { setMsg("At least 4 characters."); return; }
+    setError(null);
+    if (newPw !== confirm) { setError("Passphrases don't match."); return; }
+    if (newPw.length < 4) { setError("Use at least 4 characters."); return; }
     try {
       await invoke("vault_change_passphrase", { driveRoot, old: oldPw, new: newPw });
       setOldPw(""); setNewPw(""); setConfirm("");
@@ -695,70 +892,109 @@ function VaultTab() {
     }
   };
 
+  const lockOption = (n: number) =>
+    n === 0 ? "Never" : n === 60 ? "1 hour" : `${n} minutes`;
+
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Vault</h2>
+    <TabBody title="Vault">
+      <Section title="Change passphrase">
+        <FormField label="Current passphrase">
+          {(props) => (
+            <Input
+              type="password"
+              value={oldPw}
+              onChange={(e) => setOldPw(e.target.value)}
+              autoComplete="current-password"
+              {...props}
+            />
+          )}
+        </FormField>
+        <FormField label="New passphrase" error={error && newPw.length < 4 ? error : undefined}>
+          {(props) => (
+            <Input
+              type="password"
+              value={newPw}
+              onChange={(e) => setNewPw(e.target.value)}
+              autoComplete="new-password"
+              {...props}
+            />
+          )}
+        </FormField>
+        <FormField
+          label="Confirm new passphrase"
+          error={error && newPw === confirm ? undefined : error && confirm.length > 0 ? error : undefined}
+        >
+          {(props) => (
+            <Input
+              type="password"
+              value={confirm}
+              onChange={(e) => setConfirm(e.target.value)}
+              autoComplete="new-password"
+              {...props}
+            />
+          )}
+        </FormField>
+        <div>
+          <Button
+            variant="primary"
+            onClick={changePassphrase}
+            disabled={!oldPw || !newPw || !confirm || state.status !== "unlocked"}
+          >
+            Change passphrase
+          </Button>
+        </div>
+      </Section>
 
-      <section>
-        <h3>Change passphrase</h3>
-        <label>Current passphrase
-          <input type="password" value={oldPw} onChange={(e) => setOldPw(e.target.value)} />
-        </label>
-        <label>New passphrase
-          <input type="password" value={newPw} onChange={(e) => setNewPw(e.target.value)} />
-        </label>
-        <label>Confirm new passphrase
-          <input type="password" value={confirm} onChange={(e) => setConfirm(e.target.value)} />
-        </label>
-        {msg && <div className="arasul-error">{msg}</div>}
-        <button type="button" className="arasul-btn primary" onClick={changePassphrase}
-                disabled={!oldPw || !newPw || !confirm || state.status !== "unlocked"}>
-          Change passphrase
-        </button>
-      </section>
-
-      <section>
-        <h3>Auto-lock</h3>
-        <p className="arasul-muted">
+      <Section title="Auto-lock">
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
           Automatically lock the vault after this many minutes of inactivity. Useful on shared computers.
         </p>
-        <label>Lock after
-          <select value={autoLockMin} onChange={(e) => setAutoLockMin(Number(e.target.value))}>
-            <option value={0}>Never</option>
-            <option value={5}>5 minutes</option>
-            <option value={15}>15 minutes</option>
-            <option value={30}>30 minutes</option>
-            <option value={60}>1 hour</option>
-          </select>
-        </label>
-        <button type="button" className="arasul-btn primary" onClick={saveAutoLock}>Save</button>
-      </section>
+        <FormField label="Lock after">
+          {(props) => (
+            <Select
+              value={String(autoLockMin)}
+              onValueChange={(v) => setAutoLockMin(Number(v))}
+            >
+              <SelectTrigger id={props.id}>{lockOption(autoLockMin)}</SelectTrigger>
+              <SelectContent>
+                {[0, 5, 15, 30, 60].map((n) => (
+                  <SelectItem key={n} value={String(n)}>{lockOption(n)}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </FormField>
+        <div>
+          <Button variant="primary" onClick={saveAutoLock}>Save</Button>
+        </div>
+      </Section>
 
-      <section>
-        <h3>Lock now</h3>
-        <p className="arasul-muted">Closes your session. Plaintext is zeroed. Shortcut: ⌘L.</p>
-        <button type="button" className="arasul-btn ghost" onClick={() => void lock()}>Lock vault</button>
-      </section>
-    </div>
+      <Section title="Lock now">
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+          Closes your session. Plaintext is zeroed. Shortcut: ⌘L.
+        </p>
+        <div>
+          <Button variant="ghost" onClick={() => void lock()}>Lock vault</Button>
+        </div>
+      </Section>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Privacy — reassurance pane
-// ============================================================
+/* ============================================================
+ * Privacy — reassurance pane (readonly)
+ * ============================================================ */
 
 function PrivacyTab() {
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Privacy</h2>
-      <p className="arasul-muted">
+    <TabBody title="Privacy">
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
         Arasul is a local-first app. Your files, your projects, your vault — all stay on the SSD
         you're holding. There are no Arasul servers. There is no telemetry.
       </p>
 
-      <section>
-        <h3>What goes over the network</h3>
-        <ul className="arasul-muted">
+      <Section title="What goes over the network">
+        <ul className="pl-6 m-0 text-[length:var(--text-body-sm)] text-fg-muted leading-[1.6] flex flex-col gap-2">
           <li>
             <strong>Claude requests.</strong> When you ask Claude something, your prompt
             (and any context you add) is sent to <code>api.anthropic.com</code> — that's
@@ -773,32 +1009,30 @@ function PrivacyTab() {
             <strong>GitHub commit/push</strong> (when you use it). Goes to <code>github.com</code>.
           </li>
         </ul>
-      </section>
+      </Section>
 
-      <section>
-        <h3>What never leaves your drive</h3>
-        <ul className="arasul-muted">
+      <Section title="What never leaves your drive">
+        <ul className="pl-6 m-0 text-[length:var(--text-body-sm)] text-fg-muted leading-[1.6] flex flex-col gap-2">
           <li>Your vault passphrase.</li>
           <li>Your files, projects, and notes.</li>
           <li>Your editor history, cursor positions, local shell history.</li>
           <li>Crash logs (none collected; they're local console output).</li>
         </ul>
-      </section>
+      </Section>
 
-      <section>
-        <h3>Vault crypto</h3>
-        <p className="arasul-muted">
+      <Section title="Vault crypto">
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
           Argon2id key derivation (64 MB memory, 3 iterations) + XChaCha20-Poly1305 AEAD.
           Same family as 1Password and modern wallets. See <code>docs/vault-decision.md</code>.
         </p>
-      </section>
-    </div>
+      </Section>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Updates — existing
-// ============================================================
+/* ============================================================
+ * Updates
+ * ============================================================ */
 
 function UpdatesTab() {
   const { driveRoot } = useSession();
@@ -814,63 +1048,84 @@ function UpdatesTab() {
   useEffect(() => { void check(); }, []);
 
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>Updates</h2>
+    <TabBody title="Updates">
       {info ? (
         <div className="arasul-kv">
           <div><span>Current</span><span>{info.current_version}</span></div>
           <div><span>Latest</span><span>{info.latest_version}</span></div>
-          <div><span>Status</span>
-            <span>{info.update_available ? "Update available" : "Up to date"}</span>
+          <div>
+            <span>Status</span>
+            {info.update_available ? (
+              <Badge tone="accent">Update available</Badge>
+            ) : (
+              <Badge tone="success">Up to date</Badge>
+            )}
           </div>
         </div>
-      ) : <div className="arasul-muted">Checking…</div>}
+      ) : (
+        <p className="text-[length:var(--text-body-sm)] text-fg-muted">Checking…</p>
+      )}
 
-      <div className="arasul-actions">
-        <button type="button" className="arasul-btn ghost" onClick={check} disabled={busy}>
-          {busy ? "Checking…" : "Check again"}
-        </button>
+      <div className="flex gap-2 mt-2">
+        <Button variant="ghost" onClick={check} loading={busy}>
+          {busy ? "Checking" : "Check again"}
+        </Button>
         {info?.update_available && info.download_url && (
-          <button type="button" className="arasul-btn primary" onClick={() => {
-            void invoke("download_and_stage_update", { driveRoot })
-              .then(() => notify.ok("Update downloaded", "Restart Arasul to apply."))
-              .catch((e) => notify.err("Update failed", e));
-          }}>Download</button>
+          <Button
+            variant="primary"
+            onClick={() => {
+              void invoke("download_and_stage_update", { driveRoot })
+                .then(() => notify.ok("Update downloaded", "Restart Arasul to apply."))
+                .catch((e) => notify.err("Update failed", e));
+            }}
+          >
+            Download
+          </Button>
         )}
       </div>
-    </div>
+    </TabBody>
   );
 }
 
-// ============================================================
-// About — existing
-// ============================================================
+/* ============================================================
+ * About
+ * ============================================================ */
 
 function AboutTab() {
   return (
-    <div className="arasul-settings-tab-body">
-      <h2>About</h2>
-      <p>Arasul — a portable AI workspace on a USB-C SSD.</p>
-      <p className="arasul-muted">
-        Open-source (MIT) · <a href="https://arasul.dev">arasul.dev</a> ·{" "}
-        <a href="https://github.com/arasul/arasul">source</a>.
+    <TabBody title="About">
+      <p className="text-[length:var(--text-body)] text-fg m-0">
+        Arasul — a portable AI workspace on a USB-C SSD.
       </p>
-      <p className="arasul-muted">
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
+        Open-source (MIT) ·{" "}
+        <a className="text-accent hover:underline" href="https://arasul.dev">arasul.dev</a> ·{" "}
+        <a className="text-accent hover:underline" href="https://github.com/arasul/arasul">source</a>.
+      </p>
+      <p className="text-[length:var(--text-body-sm)] text-fg-muted m-0">
         Built with Tauri 2, React, Rust. Vault crypto: Argon2id + XChaCha20-Poly1305.
         See <code>docs/vault-decision.md</code> for the design rationale.
       </p>
-    </div>
+    </TabBody>
   );
 }
 
-// ============================================================
-// Helpers
-// ============================================================
+/* ============================================================
+ * Helpers
+ * ============================================================ */
 
-function Toggle({ label, checked, onChange }: { label: string; checked: boolean; onChange: (v: boolean) => void }) {
+function ToggleRow({
+  label,
+  checked,
+  onChange,
+}: {
+  label: string;
+  checked: boolean;
+  onChange: (v: boolean) => void;
+}) {
   return (
-    <label className="arasul-toggle-row">
-      <input type="checkbox" checked={checked} onChange={(e) => onChange(e.target.checked)} />
+    <label className="inline-flex items-center gap-2.5 cursor-pointer select-none text-[length:var(--text-body-sm)] text-fg w-fit">
+      <Switch checked={checked} onCheckedChange={onChange} />
       <span>{label}</span>
     </label>
   );

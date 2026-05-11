@@ -329,7 +329,7 @@
 .arasul-md-toolbar {
   position: sticky;
   top: 0;
-  z-index: 5;
+  z-index: var(--z-sticky);
   display: flex;
   align-items: center;
   gap: var(--sp-1);
@@ -398,7 +398,7 @@
   border: var(--border);
   border-radius: var(--radius);
   box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  z-index: 10;
+  z-index: var(--z-overlay-local);
   animation: ctxmenu-in var(--dur-fast) var(--ease-out);
 }
 .arasul-md-heading-item {
@@ -460,7 +460,7 @@
 
 .arasul-md-slash {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--z-modal-default);
   width: 280px;
   max-height: 320px;
   overflow: hidden;
@@ -552,7 +552,7 @@
 
 .arasul-md-aibox {
   position: fixed;
-  z-index: 1000;
+  z-index: var(--z-modal-default);
   display: flex;
   align-items: center;
   gap: var(--sp-2);

@@ -236,6 +236,7 @@ function HeadingPicker({ editor }: { editor: Editor }) {
         type="button"
         className="arasul-md-toolbar-btn arasul-md-heading-trigger"
         title="Heading style"
+        aria-label="Heading style picker"
         aria-haspopup="listbox"
         aria-expanded={open}
         onMouseDown={(e) => e.preventDefault()}

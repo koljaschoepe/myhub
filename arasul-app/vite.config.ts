@@ -1,12 +1,17 @@
 import { defineConfig } from "vite";
 import react from "@vitejs/plugin-react";
+import tailwindcss from "@tailwindcss/vite";
 
 // @ts-expect-error process is a nodejs global
 const host = process.env.TAURI_DEV_HOST;
 
 // https://vite.dev/config/
 export default defineConfig(async () => ({
-  plugins: [react()],
+  // Tailwind v4: CSS-first. `@import "tailwindcss"` is at the top of
+  // theme.css. The plugin scans .tsx + .css for utility classes and
+  // generates only what's used. No tailwind.config.js — `@theme` block
+  // in theme.css owns the design tokens.
+  plugins: [react(), tailwindcss()],
 
   // Vite options tailored for Tauri development and only applied in `tauri dev` or `tauri build`
   //

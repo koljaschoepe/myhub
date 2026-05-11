@@ -60,7 +60,7 @@
   top: calc(100% + 2px);
   left: var(--sp-2);
   right: var(--sp-2);
-  z-index: 50;
+  z-index: var(--z-overlay-pane);
   background: var(--bg-elevated);
   border: var(--border);
   border-radius: var(--radius);
@@ -125,7 +125,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  z-index: 1000;
+  z-index: var(--z-modal-default);
   animation: cmdk-fade var(--motion-fast) ease-out;
 }
 
@@ -314,6 +314,22 @@
   font-style: italic;
 }
 .arasul-git-disconnected svg { opacity: 0.6; }
+
+/* Phase 0.5: inline "Connect" link surfaced when no GitHub token is saved.
+   Dispatches `arasul:open-settings` { tab: "github" }; App.tsx listens. */
+.arasul-git-connect {
+  font-style: normal;
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--accent);
+  padding: 2px 8px;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  transition: background var(--motion-fast);
+}
+.arasul-git-connect:hover { background: var(--accent-soft); }
 
 .arasul-git-btn {
   display: inline-flex;
