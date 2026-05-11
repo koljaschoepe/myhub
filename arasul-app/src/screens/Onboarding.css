@@ -221,3 +221,47 @@
   gap: var(--sp-2);
   flex-direction: column;
 }
+
+/* Phase 4.6 (2026-05-11): jobs-based first question on the welcome step.
+ * Chips are square-ish buttons that read as a radio group. The active
+ * chip uses the accent border; hover stays subtle so the user notices
+ * the *selected* state more than the hovered state. */
+.arasul-intent-group {
+  margin: 0 0 var(--sp-3);
+  padding: 0;
+  border: none;
+}
+.arasul-intent-group legend {
+  padding: 0 0 var(--sp-2);
+  font-size: var(--fs-sm);
+  font-weight: 500;
+  color: var(--text-primary);
+}
+.arasul-intent-chips {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-2);
+}
+.arasul-intent-chip {
+  padding: var(--sp-2) var(--sp-3);
+  background: var(--bg-canvas);
+  color: var(--text-primary);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius);
+  font-size: var(--fs-sm);
+  cursor: pointer;
+  text-align: left;
+  transition: background var(--motion-fast), border-color var(--motion-fast);
+}
+.arasul-intent-chip:hover {
+  background: var(--hover);
+}
+.arasul-intent-chip.active {
+  background: var(--accent-tint);
+  border-color: var(--accent);
+  color: var(--accent);
+}
+.arasul-intent-chip:focus-visible {
+  outline: none;
+  box-shadow: var(--focus-ring);
+}

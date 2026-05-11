@@ -66,6 +66,11 @@ export function Onboarding() {
   const { create, driveRoot } = useSession();
   const [step, setStep] = useState<Step>("welcome");
   const [name, setName] = useState("");
+  // Phase 4.6 (2026-05-11): jobs-based first question. The drive feels
+  // more useful when you commit to a use case up front; the chip choice
+  // is persisted under `arasul.onboarding.intent` so future steps (sample
+  // workspace seeding, default folder) can read it without a roundtrip.
+  const [intent, setIntent] = useState<string>("");
   const [passphrase, setPassphrase] = useState("");
   const [confirm, setConfirm] = useState("");
   const [showPassword, setShowPassword] = useState(false);
@@ -250,6 +255,36 @@ export function Onboarding() {
             <div id="onboarding-title" className="arasul-brand-hero">Arasul</div>
             <p className="text-fg-muted">A portable AI workspace on a drive you carry.</p>
 
+            {/* Phase 4.6 (2026-05-11): jobs-based first question. Frames
+                the workspace around the user's goal, not just their name.
+                The chip choice gates the Continue button alongside the
+                name input — both are quick and feel intentional. */}
+            <fieldset className="arasul-intent-group">
+              <legend>What brings you here?</legend>
+              <div className="arasul-intent-chips" role="radiogroup" aria-label="Primary use">
+                {[
+                  { id: "write",     label: "Write & research" },
+                  { id: "code",      label: "Code projects" },
+                  { id: "knowledge", label: "Personal knowledge" },
+                  { id: "explore",   label: "Just exploring" },
+                ].map((opt) => (
+                  <button
+                    key={opt.id}
+                    type="button"
+                    role="radio"
+                    aria-checked={intent === opt.id}
+                    className={"arasul-intent-chip" + (intent === opt.id ? " active" : "")}
+                    onClick={() => {
+                      setIntent(opt.id);
+                      try { localStorage.setItem("arasul.onboarding.intent", opt.id); } catch {}
+                    }}
+                  >
+                    {opt.label}
+                  </button>
+                ))}
+              </div>
+            </fieldset>
+
             <FormField label="What should we call you?">
               {(props) => (
                 <Input
@@ -258,8 +293,7 @@ export function Onboarding() {
                   placeholder="Your name"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  autoFocus
-                  onKeyDown={(e) => { if (e.key === "Enter" && name.trim()) next(); }}
+                  onKeyDown={(e) => { if (e.key === "Enter" && name.trim() && intent) next(); }}
                   {...props}
                 />
               )}
@@ -270,7 +304,7 @@ export function Onboarding() {
               size="lg"
               className="w-full"
               onClick={next}
-              disabled={!name.trim()}
+              disabled={!name.trim() || !intent}
             >
               Continue
             </Button>

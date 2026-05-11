@@ -6,6 +6,7 @@ import { useWorkspace } from "../lib/workspace";
 import { useGithubStatus } from "../hooks/useGithubStatus";
 import { notify } from "../lib/toast";
 import * as Popover from "@radix-ui/react-popover";
+import { DragRegion } from "./DragRegion";
 import "./TopBar.css";
 
 type UpdateInfo = {
@@ -117,7 +118,11 @@ export function TopBar({ onOpenSettings }: Props = {}) {
     gh.has_origin;
 
   return (
-    <header className="arasul-topbar">
+    // Phase 3.3 (2026-05-11): the title bar is the drag region for native
+    // window movement (Tauri 2 reads the data-tauri-drag-region attribute).
+    // Interactive children (buttons, popovers, links) opt out automatically
+    // via Tauri's DOM walk on hit-test — no per-child workaround needed.
+    <DragRegion as="header" className="arasul-topbar">
       <span className="arasul-brand">Arasul</span>
       <button
         type="button"
@@ -165,7 +170,7 @@ export function TopBar({ onOpenSettings }: Props = {}) {
           <ArrowUpRight size={12} />
         </button>
       )}
-    </header>
+    </DragRegion>
   );
 }
 
