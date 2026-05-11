@@ -13,6 +13,7 @@ import {
   ContextMenuSeparator,
 } from "./ui";
 import { iconForFile } from "../lib/fileIcons";
+import { getRecent } from "../lib/recentFiles";
 import { notify } from "../lib/toast";
 import "./TreePane.css";
 
@@ -234,7 +235,11 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
                 onBlur={() => void commitRename()}
               />
             ) : (
-              <span className="arasul-tree-name">{node.name}</span>
+              /* Phase 5.11: tooltip on the name span itself (the parent
+                 row already has title={node.path}; this adds the bare
+                 name for users who just want to see the truncated text
+                 without the full path noise). */
+              <span className="arasul-tree-name" title={node.name}>{node.name}</span>
             )}
           </div>
         </ContextMenuTrigger>
@@ -313,9 +318,9 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
     if (!rootPath) return;
     const name = window.prompt("Folder name", "untitled");
     if (!name) return;
-    const placeholder = `${rootPath}/${name}/.gitkeep`;
+    // Phase 5.3: real mkdir command — no more .gitkeep placeholder.
     try {
-      await invoke("write_file", { path: placeholder, content: "" });
+      await invoke("mkdir", { path: `${rootPath}/${name}` });
       refresh();
     } catch (e) {
       notify.err("Couldn't create folder", e);
@@ -365,6 +370,22 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
       }}>
         <Copy /> Copy path
       </ContextMenuItem>
+      {/* Phase 5.10: relative-to-project copy. Useful for non-coders
+          authoring markdown links — they get `notes/foo.md` instead of
+          a 200-char absolute path. */}
+      {rootPath && node.path.startsWith(rootPath) && (
+        <ContextMenuItem onSelect={() => {
+          const rel = node.path.slice(rootPath.length).replace(/^\/+/, "");
+          try {
+            void navigator.clipboard.writeText(rel);
+            notify.ok("Relative path copied");
+          } catch (e) {
+            notify.err("Couldn't copy relative path", e);
+          }
+        }}>
+          <Copy /> Copy relative path
+        </ContextMenuItem>
+      )}
       <ContextMenuItem onSelect={() =>
         void invoke("reveal_in_finder", { path: node.path })
           .catch((e) => notify.err("Couldn't reveal in Finder", e))
@@ -391,12 +412,9 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
           <ContextMenuItem onSelect={async () => {
             const name = window.prompt("Folder name", "untitled");
             if (!name) return;
-            // No dedicated mkdir command — write a .gitkeep placeholder so the
-            // empty dir survives. The user can delete the placeholder once they
-            // add real files.
-            const placeholder = `${node.path}/${name}/.gitkeep`;
+            // Phase 5.3: real mkdir — no .gitkeep placeholder.
             try {
-              await invoke("write_file", { path: placeholder, content: "" });
+              await invoke("mkdir", { path: `${node.path}/${name}` });
               refresh();
             } catch (e) {
               notify.err("Couldn't create folder", e);
@@ -422,7 +440,7 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
   );
 
   if (sessionState.status !== "unlocked") {
-    return <div className="arasul-tree-empty">Vault locked</div>;
+    return <div className="arasul-tree-empty">Drive locked</div>;
   }
 
   if (!rootPath) {
@@ -499,6 +517,7 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
           {showHidden ? <Eye size={13} /> : <EyeOff size={13} />}
         </button>
       </div>
+      {rootPath && <RecentGroup rootPath={rootPath} onOpen={openFile} />}
       <div className="arasul-tree-scroll" ref={scrollRef}>
         {roots.length === 0 ? (
           <div className="arasul-tree-empty">
@@ -512,5 +531,73 @@ export function TreePane({ rootPath, emptyHint }: TreePaneProps = {}) {
         )}
       </div>
     </div>
+  );
+}
+
+/**
+ * Phase 5.7 (2026-05-11): collapsible "Recent" group at the top of the
+ * tree. Pulls from the same MRU list the command palette uses
+ * (recentFiles.ts), filtered to files inside the current project root.
+ *
+ * Uses native `<details>` so the open/closed state is a11y-correct
+ * out of the box (screen readers announce the disclosure). Persisted
+ * via localStorage so the user's preference survives reloads.
+ */
+function RecentGroup({
+  rootPath,
+  onOpen,
+}: {
+  rootPath: string;
+  onOpen: (path: string) => void;
+}) {
+  const { state: ws } = useWorkspace();
+  const [recent, setRecent] = useState<string[]>(() => getRecent());
+
+  // Refresh on workspace events that imply the MRU changed.
+  useEffect(() => {
+    setRecent(getRecent());
+  }, [ws.openFilePath]);
+
+  const filtered = useMemo(
+    () => recent.filter((p) => p.startsWith(rootPath + "/")).slice(0, 5),
+    [recent, rootPath],
+  );
+
+  if (filtered.length === 0) return null;
+
+  return (
+    <details
+      className="arasul-tree-recent"
+      open={localStorage.getItem("arasul.tree.recentOpen") !== "0"}
+      onToggle={(e) => {
+        const open = (e.currentTarget as HTMLDetailsElement).open;
+        try {
+          localStorage.setItem("arasul.tree.recentOpen", open ? "1" : "0");
+        } catch { /* ignore */ }
+      }}
+    >
+      <summary className="arasul-tree-recent-summary">
+        <ChevronRight size={11} className="arasul-tree-recent-chev" />
+        <span>Recent</span>
+        <span className="arasul-tree-recent-count">{filtered.length}</span>
+      </summary>
+      <div className="arasul-tree-recent-list">
+        {filtered.map((path) => {
+          const name = path.split("/").pop() ?? path;
+          return (
+            <button
+              key={path}
+              type="button"
+              className={"arasul-tree-recent-item" + (ws.openFilePath === path ? " active" : "")}
+              onClick={() => onOpen(path)}
+              title={path.slice(rootPath.length + 1)}
+            >
+              <FileText size={12} aria-hidden="true" />
+              <span>{name}</span>
+            </button>
+          );
+        })}
+      </div>
+    </details>
   );
 }

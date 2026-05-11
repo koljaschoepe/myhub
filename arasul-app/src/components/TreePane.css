@@ -165,3 +165,77 @@
   color: var(--text-primary);
   outline: none;
 }
+
+/* Phase 5.7: Recent collapsible group. Sits between toolbar and tree
+ * scroll area, takes its background from --bg-pane and visually mirrors
+ * the rest of the tree's row styling so it feels native, not bolted-on. */
+.arasul-tree-recent {
+  padding: 0 0 var(--space-2);
+  border-bottom: var(--border);
+}
+.arasul-tree-recent-summary {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px var(--pane-pad-x);
+  font-size: var(--fs-xs);
+  font-weight: var(--fw-medium);
+  color: var(--text-tertiary);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  cursor: pointer;
+  list-style: none;
+  user-select: none;
+}
+.arasul-tree-recent-summary::-webkit-details-marker { display: none; }
+.arasul-tree-recent-summary:hover { color: var(--text-secondary); }
+.arasul-tree-recent-chev {
+  transition: transform var(--motion-fast);
+  opacity: 0.6;
+}
+.arasul-tree-recent[open] > .arasul-tree-recent-summary > .arasul-tree-recent-chev {
+  transform: rotate(90deg);
+}
+.arasul-tree-recent-count {
+  margin-left: auto;
+  padding: 1px 6px;
+  border-radius: var(--radius-pill);
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: var(--fw-regular);
+  letter-spacing: 0;
+  text-transform: none;
+}
+.arasul-tree-recent-list {
+  display: flex;
+  flex-direction: column;
+  padding: 0 0 4px;
+}
+.arasul-tree-recent-item {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px var(--pane-pad-x) 4px calc(var(--pane-pad-x) + 12px);
+  background: transparent;
+  border: 0;
+  color: var(--text-secondary);
+  font-size: var(--fs-sm);
+  text-align: left;
+  cursor: pointer;
+  transition: background var(--motion-fast), color var(--motion-fast);
+}
+.arasul-tree-recent-item:hover {
+  background: var(--hover);
+  color: var(--text-primary);
+}
+.arasul-tree-recent-item.active {
+  background: var(--accent-soft);
+  color: var(--accent);
+}
+.arasul-tree-recent-item span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  min-width: 0;
+}

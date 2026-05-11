@@ -24,6 +24,11 @@ export function SearchPanel({ open, onClose }: Props) {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [caseSensitive, setCaseSensitive] = useState(false);
+  // Phase 5.4: regex + whole-word toggles. Default to literal substring
+  // search (regex=false) because that's the discoverable behavior — only
+  // power users opt into regex semantics.
+  const [regex, setRegex] = useState(false);
+  const [wholeWord, setWholeWord] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const debounceRef = useRef<number | null>(null);
 
@@ -40,7 +45,13 @@ export function SearchPanel({ open, onClose }: Props) {
       setBusy(true); setError(null);
       try {
         const result = await invoke<SearchHit[]>("search_in_project", {
-          args: { root, query: query.trim(), case_sensitive: caseSensitive },
+          args: {
+            root,
+            query: query.trim(),
+            case_sensitive: caseSensitive,
+            regex,
+            whole_word: wholeWord,
+          },
         });
         setHits(result);
       } catch (e) {
@@ -52,7 +63,7 @@ export function SearchPanel({ open, onClose }: Props) {
     return () => {
       if (debounceRef.current) window.clearTimeout(debounceRef.current);
     };
-  }, [open, query, caseSensitive, ws.projectSlug, driveRoot]);
+  }, [open, query, caseSensitive, regex, wholeWord, ws.projectSlug, driveRoot]);
 
   if (!open) return null;
 
@@ -90,10 +101,29 @@ export function SearchPanel({ open, onClose }: Props) {
             onKeyDown={(e) => { if (e.key === "Escape") onClose(); }}
           />
           <button
+            type="button"
             className={"arasul-search-tog" + (caseSensitive ? " active" : "")}
             onClick={() => setCaseSensitive((c) => !c)}
-            title="Case sensitive"
+            title="Case sensitive (Aa)"
+            aria-label="Match case"
+            aria-pressed={caseSensitive}
           >Aa</button>
+          <button
+            type="button"
+            className={"arasul-search-tog" + (wholeWord ? " active" : "")}
+            onClick={() => setWholeWord((w) => !w)}
+            title="Whole word"
+            aria-label="Match whole words only"
+            aria-pressed={wholeWord}
+          >ab|</button>
+          <button
+            type="button"
+            className={"arasul-search-tog" + (regex ? " active" : "")}
+            onClick={() => setRegex((r) => !r)}
+            title="Use regular expression"
+            aria-label="Regular expression"
+            aria-pressed={regex}
+          >.*</button>
           <button className="arasul-search-close" onClick={onClose} aria-label="Close search">
             <X size={14} />
           </button>

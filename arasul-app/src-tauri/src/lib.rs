@@ -98,6 +98,7 @@ pub fn run() {
             fs::read_file_bytes,
             fs::write_file,
             fs::rename,
+            fs::mkdir,
             fs::delete,
             fs::reveal_in_finder,
             // §3b import (drag-drop + dialog)

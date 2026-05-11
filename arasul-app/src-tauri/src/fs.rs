@@ -229,6 +229,14 @@ pub fn rename(src: String, dst: String) -> Result<()> {
     fs::rename(&src, &dst).map_err(|e| e.into())
 }
 
+/// Phase 5.3: create an empty directory. Replaces the workaround
+/// of writing a `.gitkeep` placeholder from the frontend, which
+/// left a spurious file non-coders would then have to delete.
+#[tauri::command]
+pub fn mkdir(path: String) -> Result<()> {
+    fs::create_dir_all(&path).map_err(|e| e.into())
+}
+
 /// Delete into the drive's `.Trashes/` rather than hard-deleting.
 /// v1 uses a soft move; a Trash-aware implementation lands in Phase 2.3.
 #[tauri::command]
