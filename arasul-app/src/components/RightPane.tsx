@@ -74,6 +74,10 @@ export function RightPane() {
   }, [activeUid]);
 
   // ⌘T new, ⌘W close active, ⌘1..9 switch by index.
+  // Phase 7.7 (2026-05-11): ⌘W is scoped to the right pane — when focus
+  // sits in the editor, EditorPane's handler closes the editor tab
+  // instead. Whoever owns focus wins; the inverse priority lives in
+  // EditorPane's ⌘W handler.
   useEffect(() => {
     if (sessionState.status !== "unlocked") return;
     const onKey = (e: KeyboardEvent) => {
@@ -82,6 +86,11 @@ export function RightPane() {
         e.preventDefault();
         openNew();
       } else if (e.key.toLowerCase() === "w") {
+        // Phase 7.7: only fire when focus lives inside the right pane
+        // (terminal). When focus is in the editor, defer to EditorPane.
+        const active = document.activeElement as Element | null;
+        const inRight = active?.closest?.(".arasul-right-terminal");
+        if (!inRight) return;
         e.preventDefault();
         if (activeUid) closeTab(activeUid);
       } else if (/^[1-9]$/.test(e.key)) {

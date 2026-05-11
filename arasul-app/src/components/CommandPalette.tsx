@@ -1,11 +1,26 @@
-import { useState, useEffect } from "react";
+import { useMemo, useState, useEffect } from "react";
 import { Command, useCommandState } from "cmdk";
 import { invoke } from "@tauri-apps/api/core";
 import { useWorkspace } from "../lib/workspace";
 import { useSession } from "../lib/session";
 import { getRecent } from "../lib/recentFiles";
+import { getRecentCommands, pushRecentCommand } from "../lib/recentCommands";
 import { Dialog, DialogContent } from "./ui";
 import "./CommandPalette.css";
+
+/**
+ * Phase 7.3 (2026-05-11): stable command registry. Each entry has an
+ * `id` (used for the recents MRU), a label, an optional kbd hint, and
+ * a `run()` closure. The "Recent" group at the top of the palette
+ * pulls IDs from getRecentCommands() and renders matching entries first.
+ */
+type Cmd = {
+  id: string;
+  group: string;
+  label: string;
+  kbd?: string;
+  run: () => void | Promise<void>;
+};
 
 type Project = {
   slug: string;
@@ -133,6 +148,60 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
     files: ws.projectSlug ? "Find file in project…" : "No project open — pick one first",
   };
 
+  // Phase 7.3: stable command registry. Memoized over the closures it
+  // depends on so the array identity is stable across renders.
+  const commands = useMemo<Cmd[]>(() => [
+    { id: "find-file",       group: "Workspace", label: "Find file…",        kbd: "⌘P",
+      run: () => setMode("files") },
+    { id: "switch-project",  group: "Workspace", label: "Switch project…",   kbd: "⌘⇧P",
+      run: () => setMode("projects") },
+    { id: "search-files",    group: "Workspace", label: "Search across files…", kbd: "⌘⇧F",
+      run: () => { onOpenSearch?.(); setOpen(false); } },
+    { id: "lock-drive",      group: "Drive lock", label: "Lock drive",       kbd: "⌘⇧L",
+      run: () => { void lock(); setOpen(false); } },
+    { id: "open-settings",   group: "App", label: "Settings…",               kbd: "⌘,",
+      run: () => { onOpenSettings?.(); setOpen(false); } },
+    { id: "refresh-wiki",    group: "System", label: "Refresh wiki",
+      run: async () => {
+        try { await invoke("compile"); } catch (e) { console.warn(e); }
+        setOpen(false);
+      } },
+    { id: "check-drive",     group: "System", label: "Check drive",
+      run: async () => {
+        try { await invoke("verify"); } catch (e) { console.warn(e); }
+        setOpen(false);
+      } },
+    { id: "check-update",    group: "System", label: "Check for update",
+      run: async () => {
+        try { await invoke("check_for_update"); } catch (e) { console.warn(e); }
+        setOpen(false);
+      } },
+  ], [setMode, onOpenSearch, setOpen, lock, onOpenSettings]);
+
+  // Phase 7.3: which commands have been used recently. Capture a snapshot
+  // when the palette opens — we don't want order to thrash mid-session
+  // (Linear convention: stable list within an opening).
+  const [recentIds, setRecentIds] = useState<string[]>([]);
+  useEffect(() => {
+    if (open) setRecentIds(getRecentCommands());
+  }, [open]);
+
+  const wrapRun = (c: Cmd) => () => {
+    pushRecentCommand(c.id);
+    return c.run();
+  };
+
+  const cmdById = useMemo(() => {
+    const m = new Map<string, Cmd>();
+    for (const c of commands) m.set(c.id, c);
+    return m;
+  }, [commands]);
+  const recentCmds = recentIds
+    .map((id) => cmdById.get(id))
+    .filter((c): c is Cmd => !!c);
+  const groups: Record<string, Cmd[]> = {};
+  for (const c of commands) (groups[c.group] ??= []).push(c);
+
   return (
     <Dialog open={open} onOpenChange={setOpen}>
       <DialogContent
@@ -163,41 +232,39 @@ export function CommandPalette({ open, onOpenChange, onOpenSettings, onOpenSearc
 
             {mode === "commands" && (
               <>
-                <Command.Group heading="Workspace">
-                  <Command.Item onSelect={() => setMode("files")}>
-                    Find file… <kbd>⌘P</kbd>
-                  </Command.Item>
-                  <Command.Item onSelect={() => setMode("projects")}>
-                    Switch project… <kbd>⌘⇧P</kbd>
-                  </Command.Item>
-                  <Command.Item onSelect={() => { onOpenSearch?.(); setOpen(false); }}>
-                    Search across files… <kbd>⌘⇧F</kbd>
-                  </Command.Item>
-                </Command.Group>
-                <Command.Group heading="Drive lock">
-                  <Command.Item onSelect={() => { void lock(); setOpen(false); }}>
-                    Lock drive
-                  </Command.Item>
-                </Command.Group>
-                <Command.Group heading="App">
-                  <Command.Item onSelect={() => { onOpenSettings?.(); setOpen(false); }}>
-                    Settings… <kbd>⌘,</kbd>
-                  </Command.Item>
-                </Command.Group>
-                <Command.Group heading="System">
-                  <Command.Item onSelect={async () => {
-                    try { await invoke("compile"); } catch (e) { console.warn(e); }
-                    setOpen(false);
-                  }}>Refresh wiki</Command.Item>
-                  <Command.Item onSelect={async () => {
-                    try { await invoke("verify"); } catch (e) { console.warn(e); }
-                    setOpen(false);
-                  }}>Check drive</Command.Item>
-                  <Command.Item onSelect={async () => {
-                    try { await invoke("check_for_update"); } catch (e) { console.warn(e); }
-                    setOpen(false);
-                  }}>Check for update</Command.Item>
-                </Command.Group>
+                {/* Phase 7.3: Recent-commands group at top. Only renders
+                    when the user has used 1+ commands and not currently
+                    searching (filter > 0 chars hides recents — the cmdk
+                    fuzzy match already surfaces matching commands across
+                    every group). */}
+                {recentCmds.length > 0 && !query && (
+                  <Command.Group heading="Recent">
+                    {recentCmds.map((c) => (
+                      <Command.Item
+                        key={`recent-${c.id}`}
+                        value={`recent ${c.label}`}
+                        onSelect={wrapRun(c)}
+                      >
+                        {c.label}
+                        {c.kbd && <kbd>{c.kbd}</kbd>}
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                )}
+                {Object.entries(groups).map(([group, cs]) => (
+                  <Command.Group key={group} heading={group}>
+                    {cs.map((c) => (
+                      <Command.Item
+                        key={c.id}
+                        value={c.label}
+                        onSelect={wrapRun(c)}
+                      >
+                        {c.label}
+                        {c.kbd && <kbd>{c.kbd}</kbd>}
+                      </Command.Item>
+                    ))}
+                  </Command.Group>
+                ))}
               </>
             )}
 

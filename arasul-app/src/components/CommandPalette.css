@@ -92,12 +92,23 @@
   font-family: var(--font-mono);
 }
 
-/* Fuzzy-match highlight (Phase D). cmdk has no native highlight, so we
-   wrap subsequence-matched chars ourselves. Subtle accent emphasis. */
+/* Fuzzy-match highlight (Phase D + Phase 7.5). cmdk has no native
+ * highlight, so we wrap subsequence-matched chars ourselves. Phase 7.5
+ * (2026-05-11): pair the accent text color with a soft accent background
+ * fill + 1px rounded padding so partial matches pop visually on long
+ * rows where the row itself is muted. Looks like Linear's match-on-pill. */
 .arasul-cmdk-list mark {
-  background: transparent;
+  background: var(--accent-soft);
   color: var(--accent);
   font-weight: var(--fw-semibold);
+  padding: 0 2px;
+  border-radius: 2px;
+}
+/* On the focused row, the row background is already accent-soft; flip
+ * the match's accent so it doesn't blend into the row. */
+.arasul-cmdk-list [cmdk-item][data-selected="true"] mark {
+  background: rgba(255, 255, 255, 0.18);
+  color: var(--text-on-accent, var(--text-primary));
 }
 
 /* "+ N more" footer when files list is truncated. */

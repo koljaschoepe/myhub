@@ -47,7 +47,8 @@ const SECTIONS: Section[] = [
   {
     title: "Vault",
     rows: [
-      ["⌘ L",         "Lock drive"],
+      ["⌘ L",         "Focus AI (right pane)"],
+      ["⌘ ⇧ L",       "Lock drive"],
       ["Enter",       "Submit passphrase"],
     ],
   },

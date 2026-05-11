@@ -364,13 +364,31 @@ export function MarkdownEditor({ filePath }: Props) {
       } else if (mod && e.shiftKey && e.key.toLowerCase() === "m") {
         e.preventDefault();
         toggleSourceMode();
-      } else if (mod && !e.shiftKey && !sourceModeRef.current && e.key.toLowerCase() === "b") {
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "b") {
+        // Phase 7.8: in source mode CodeMirror would consume ⌘B (search
+        // forward); intercept it here so the user gets a clear hint
+        // instead of a silent no-op.
+        if (sourceModeRef.current) {
+          e.preventDefault();
+          notify.info("Only in rendered view. ⌘⇧M to switch back.");
+          return;
+        }
         e.preventDefault();
         editor.chain().focus().toggleBold().run();
-      } else if (mod && !e.shiftKey && !sourceModeRef.current && e.key.toLowerCase() === "i") {
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "i") {
+        if (sourceModeRef.current) {
+          e.preventDefault();
+          notify.info("Only in rendered view. ⌘⇧M to switch back.");
+          return;
+        }
         e.preventDefault();
         editor.chain().focus().toggleItalic().run();
-      } else if (mod && !e.shiftKey && !sourceModeRef.current && e.key.toLowerCase() === "u") {
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "u") {
+        if (sourceModeRef.current) {
+          e.preventDefault();
+          notify.info("Only in rendered view. ⌘⇧M to switch back.");
+          return;
+        }
         e.preventDefault();
         editor.chain().focus().toggleUnderline().run();
       } else if (mod && !e.shiftKey && e.key.toLowerCase() === "f" && !sourceModeRef.current) {

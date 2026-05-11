@@ -152,10 +152,20 @@ function AppShell() {
           try { window.localStorage.setItem("arasul.focusMode", next ? "1" : "0"); } catch { /* ignore */ }
           return next;
         });
-      } else if (mod && e.key.toLowerCase() === "l") {
-        // ⌘L — lock vault. Was advertised in ShortcutsOverlay as "(coming)";
-        // wired now. Closes any open overlays so the Unlock screen is the
-        // only thing visible after.
+      } else if (mod && !e.shiftKey && e.key.toLowerCase() === "l") {
+        // Phase 7.1 (Cursor convention): ⌘L focuses the AI right pane.
+        // Phase 8 will reframe this as "open chat" once a ChatPane
+        // overlay lands; for now we hand keystroke focus to the active
+        // terminal so the user lands in myhub-tui's prompt.
+        e.preventDefault();
+        const helper = document.querySelector<HTMLTextAreaElement>(
+          ".arasul-right-terminal .arasul-term-slot:not(.hidden) .xterm-helper-textarea",
+        );
+        if (helper) helper.focus();
+      } else if (mod && e.shiftKey && e.key.toLowerCase() === "l") {
+        // ⌘⇧L — lock drive. Phase 7.1 (2026-05-11): moved from ⌘L,
+        // which is now Cursor-style "focus AI". Closes any open
+        // overlays so the Unlock screen is the only thing visible.
         e.preventDefault();
         setSettingsOpen(false);
         setPaletteOpen(false);

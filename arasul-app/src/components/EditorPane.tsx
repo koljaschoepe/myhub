@@ -117,13 +117,23 @@ export function EditorPane() {
   const rootRef = useRef<HTMLDivElement>(null);
 
   // ⌘W close active tab.
+  // Phase 7.7 (2026-05-11): scope to the editor pane. The terminal
+  // (RightPane) also binds ⌘W to close its active tab — whichever pane
+  // currently owns keyboard focus wins, so the user closes the thing
+  // they're looking at instead of the wrong surface fighting for the
+  // shortcut. The check walks document.activeElement up to a known
+  // pane wrapper.
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       const mod = e.metaKey || e.ctrlKey;
-      if (mod && e.key.toLowerCase() === "w" && ws.openFilePath) {
-        e.preventDefault();
-        closeFile(ws.openFilePath);
-      }
+      if (!mod || e.key.toLowerCase() !== "w" || !ws.openFilePath) return;
+      const active = document.activeElement as Element | null;
+      const inEditor = active?.closest?.(".arasul-pane-editor");
+      const inRight = active?.closest?.(".arasul-right-terminal, .arasul-pane-right");
+      // If focus is in the right (terminal) pane, defer to its handler.
+      if (inRight && !inEditor) return;
+      e.preventDefault();
+      closeFile(ws.openFilePath);
     };
     window.addEventListener("keydown", onKey);
     return () => window.removeEventListener("keydown", onKey);
