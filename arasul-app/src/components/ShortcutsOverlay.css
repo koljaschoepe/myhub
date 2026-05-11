@@ -102,3 +102,60 @@
   font-size: var(--fs-xs);
   color: var(--text-primary);
 }
+
+/* Phase 7.9 (2026-05-11): search field + collapsible section toggles. */
+.arasul-shortcuts-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: var(--space-3) var(--space-5);
+  border-bottom: 1px solid var(--border-subtle);
+  background: var(--bg-elevated);
+  color: var(--text-tertiary);
+}
+.arasul-shortcuts-search input {
+  flex: 1;
+  background: transparent;
+  border: 0;
+  outline: none;
+  color: var(--text-primary);
+  font-size: var(--fs-sm);
+  padding: 4px 0;
+}
+.arasul-shortcuts-search input::placeholder { color: var(--text-tertiary); }
+
+.arasul-shortcuts-section-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  width: 100%;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  font: inherit;
+  color: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+.arasul-shortcuts-section-toggle:disabled { cursor: default; }
+.arasul-shortcuts-section-chev {
+  display: inline-block;
+  width: 10px;
+  font-size: 11px;
+  color: var(--text-tertiary);
+}
+.arasul-shortcuts-section-count {
+  margin-left: auto;
+  padding: 1px 6px;
+  background: var(--bg-elevated);
+  border-radius: var(--radius-pill);
+  color: var(--text-tertiary);
+  font-size: 10px;
+  font-weight: var(--fw-regular);
+}
+.arasul-shortcuts-empty {
+  padding: var(--space-6);
+  color: var(--text-tertiary);
+  text-align: center;
+  font-size: var(--fs-sm);
+}

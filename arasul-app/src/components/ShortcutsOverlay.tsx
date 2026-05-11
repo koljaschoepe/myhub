@@ -1,4 +1,5 @@
-import { useEffect, useRef } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Search } from "lucide-react";
 import "./ShortcutsOverlay.css";
 
 type Section = { title: string; rows: [string, string][] };
@@ -45,7 +46,7 @@ const SECTIONS: Section[] = [
     ],
   },
   {
-    title: "Vault",
+    title: "Drive lock",
     rows: [
       ["⌘ L",         "Focus AI (right pane)"],
       ["⌘ ⇧ L",       "Lock drive"],
@@ -54,9 +55,53 @@ const SECTIONS: Section[] = [
   },
 ];
 
+const COLLAPSE_KEY = "arasul.shortcutsCollapsed";
+
+function loadCollapsed(): Set<string> {
+  try {
+    const raw = window.localStorage.getItem(COLLAPSE_KEY);
+    if (!raw) return new Set();
+    const arr = JSON.parse(raw);
+    return new Set(Array.isArray(arr) ? arr.filter((s) => typeof s === "string") : []);
+  } catch { return new Set(); }
+}
+function saveCollapsed(s: Set<string>) {
+  try { window.localStorage.setItem(COLLAPSE_KEY, JSON.stringify([...s])); }
+  catch { /* ignore */ }
+}
+
 export function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
   const dialogRef = useRef<HTMLDivElement>(null);
   const lastFocused = useRef<Element | null>(null);
+  // Phase 7.9 (2026-05-11): search field + collapsible sections.
+  const [query, setQuery] = useState("");
+  const [collapsed, setCollapsed] = useState<Set<string>>(loadCollapsed);
+
+  const toggleCollapsed = (title: string) => {
+    setCollapsed((prev) => {
+      const next = new Set(prev);
+      if (next.has(title)) next.delete(title);
+      else next.add(title);
+      saveCollapsed(next);
+      return next;
+    });
+  };
+
+  // Filter rows by query (matches against keys or description). When
+  // a query is active, all sections auto-expand so matches stay
+  // visible even if the user collapsed them earlier.
+  const filtered = useMemo(() => {
+    const q = query.trim().toLowerCase();
+    if (!q) return SECTIONS;
+    return SECTIONS
+      .map((s) => ({
+        ...s,
+        rows: s.rows.filter(
+          ([k, d]) => k.toLowerCase().includes(q) || d.toLowerCase().includes(q),
+        ),
+      }))
+      .filter((s) => s.rows.length > 0);
+  }, [query]);
 
   useEffect(() => {
     lastFocused.current = document.activeElement;
@@ -116,24 +161,61 @@ export function ShortcutsOverlay({ onClose }: { onClose: () => void }) {
             onClick={onClose}
           >×</button>
         </div>
+        {/* Phase 7.9: search field. Auto-expands every section when
+            non-empty so matches aren't hidden by a collapsed group. */}
+        <div className="arasul-shortcuts-search">
+          <Search size={12} aria-hidden="true" />
+          <input
+            type="text"
+            placeholder="Search shortcuts…"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            aria-label="Filter shortcuts"
+            autoFocus
+          />
+        </div>
         <div className="arasul-shortcuts-body">
-          {SECTIONS.map((s) => (
-            <section key={s.title}>
-              <h3>{s.title}</h3>
-              <dl>
-                {s.rows.map(([keys, desc]) => (
-                  <div key={keys}>
-                    <dt>
-                      {keys.split(" ").map((k, i) =>
-                        k === "/" ? <kbd key={i}>/</kbd> : <kbd key={i}>{k}</kbd>
-                      )}
-                    </dt>
-                    <dd>{desc}</dd>
-                  </div>
-                ))}
-              </dl>
-            </section>
-          ))}
+          {filtered.length === 0 && (
+            <p className="arasul-shortcuts-empty">No shortcuts match.</p>
+          )}
+          {filtered.map((s) => {
+            const isCollapsed = !query && collapsed.has(s.title);
+            return (
+              <section key={s.title}>
+                <h3>
+                  <button
+                    type="button"
+                    className="arasul-shortcuts-section-toggle"
+                    onClick={() => toggleCollapsed(s.title)}
+                    aria-expanded={!isCollapsed}
+                    disabled={!!query}
+                  >
+                    <span className="arasul-shortcuts-section-chev" aria-hidden="true">
+                      {isCollapsed ? "▸" : "▾"}
+                    </span>
+                    {s.title}
+                    <span className="arasul-shortcuts-section-count">
+                      {s.rows.length}
+                    </span>
+                  </button>
+                </h3>
+                {!isCollapsed && (
+                  <dl>
+                    {s.rows.map(([keys, desc]) => (
+                      <div key={keys}>
+                        <dt>
+                          {keys.split(" ").map((k, i) =>
+                            k === "/" ? <kbd key={i}>/</kbd> : <kbd key={i}>{k}</kbd>
+                          )}
+                        </dt>
+                        <dd>{desc}</dd>
+                      </div>
+                    ))}
+                  </dl>
+                )}
+              </section>
+            );
+          })}
         </div>
       </div>
     </div>

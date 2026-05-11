@@ -142,6 +142,46 @@ export function EditorPane() {
   const [importing, setImporting] = useState(false);
   const [importMsg, setImportMsg] = useState<{ kind: "ok" | "err"; text: string } | null>(null);
   const [conflict, setConflict] = useState<ConflictState | null>(null);
+  // Phase 5.9 (2026-05-11): per-file dirty state. Each editor surface
+  // (MarkdownEditor, TextEditor, SpreadsheetEditor, WorkflowEditor)
+  // dispatches `arasul:editor-dirty` events with `{path, dirty: bool}`
+  // when their save status flips. We track the Set here and pass it
+  // to EditorTabs so the dirty-dot indicator stays accurate without
+  // each editor needing a direct callback prop drilled through.
+  const [dirtyPaths, setDirtyPaths] = useState<Set<string>>(new Set());
+
+  useEffect(() => {
+    const onDirty = (e: Event) => {
+      const detail = (e as CustomEvent<{ path: string; dirty: boolean }>).detail;
+      if (!detail || !detail.path) return;
+      setDirtyPaths((prev) => {
+        const has = prev.has(detail.path);
+        if (detail.dirty === has) return prev;
+        const next = new Set(prev);
+        if (detail.dirty) next.add(detail.path);
+        else next.delete(detail.path);
+        return next;
+      });
+    };
+    window.addEventListener("arasul:editor-dirty", onDirty);
+    return () => window.removeEventListener("arasul:editor-dirty", onDirty);
+  }, []);
+
+  // When a tab closes its file, clear any lingering dirty marker for it.
+  useEffect(() => {
+    setDirtyPaths((prev) => {
+      const open = new Set(ws.openFiles);
+      let changed = false;
+      const next = new Set(prev);
+      for (const p of prev) {
+        if (!open.has(p)) {
+          next.delete(p);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+  }, [ws.openFiles]);
 
   const slug = ws.projectSlug;
 
@@ -302,6 +342,7 @@ export function EditorPane() {
       <EditorTabs
         openFiles={ws.openFiles}
         active={filePath}
+        dirtyPaths={dirtyPaths}
         onSelect={openFile}
         onClose={closeFile}
         importing={importing}
@@ -327,9 +368,12 @@ export function EditorPane() {
 
 // ---------------- EditorTabs (VS Code-style multi-file) ----------------
 
-function EditorTabs({ openFiles, active, onSelect, onClose, importing, canImport, onImport }: {
+function EditorTabs({ openFiles, active, dirtyPaths, onSelect, onClose, importing, canImport, onImport }: {
   openFiles: string[];
   active: string;
+  /** Phase 5.9: paths whose editor has unsaved changes. Rendered as a
+   *  dot next to the filename. Browsers / IDEs converge on this signal. */
+  dirtyPaths: Set<string>;
   onSelect: (path: string) => void;
   onClose: (path: string) => void;
   importing: boolean;
@@ -341,16 +385,38 @@ function EditorTabs({ openFiles, active, onSelect, onClose, importing, canImport
       {openFiles.map((path) => {
         const name = path.split("/").pop() ?? path;
         const isActive = path === active;
+        const isDirty = dirtyPaths.has(path);
         return (
           <button
             key={path}
             role="tab"
             aria-selected={isActive}
-            className={"arasul-editor-tab" + (isActive ? " active" : "")}
+            className={
+              "arasul-editor-tab"
+              + (isActive ? " active" : "")
+              + (isDirty ? " dirty" : "")
+            }
             onClick={() => onSelect(path)}
-            title={path}
+            onMouseDown={(e) => {
+              // Phase 5.9: middle-click closes the tab — the browser /
+              // VS Code convention. Auxclick is harder to capture
+              // consistently across platforms; mousedown with button===1
+              // is the canonical detection.
+              if (e.button === 1) {
+                e.preventDefault();
+                onClose(path);
+              }
+            }}
+            title={path + (isDirty ? " (unsaved)" : "")}
           >
             <span className="arasul-editor-tab-name">{name}</span>
+            {isDirty && (
+              <span
+                className="arasul-editor-tab-dot"
+                aria-label="unsaved changes"
+                aria-hidden="false"
+              />
+            )}
             <span
               role="button"
               aria-label="close tab"
@@ -392,6 +458,19 @@ function TextEditor({ filePath, cmLanguage }: TextEditorProps) {
   const cmRef = useRef<ReactCodeMirrorRef>(null);
   const saveTimer = useRef<{ id: number; path: string } | null>(null);
   const editorPrefs = useAppConfig().editor;
+
+  // Phase 5.9: emit dirty events so EditorPane's tab strip renders a
+  // dot. Same contract as MarkdownEditor's emitter.
+  useEffect(() => {
+    window.dispatchEvent(
+      new CustomEvent("arasul:editor-dirty", { detail: { path: filePath, dirty } }),
+    );
+  }, [dirty, filePath]);
+  useEffect(() => () => {
+    window.dispatchEvent(
+      new CustomEvent("arasul:editor-dirty", { detail: { path: filePath, dirty: false } }),
+    );
+  }, [filePath]);
 
   useEffect(() => {
     let cancelled = false;

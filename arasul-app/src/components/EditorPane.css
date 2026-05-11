@@ -61,6 +61,23 @@
 }
 .arasul-editor-tab-close:hover { background: var(--hover); color: var(--text-primary); }
 
+/* Phase 5.9 (2026-05-11): dirty-state dot on the tab. Replaces the
+ * close-X visually when present, until hover (VS Code pattern: hover
+ * reveals the X). Subtle accent fill so it doesn't compete with the
+ * focused-tab underline. */
+.arasul-editor-tab-dot {
+  display: inline-block;
+  width: 8px;
+  height: 8px;
+  margin: 0 5px;
+  border-radius: var(--radius-pill);
+  background: var(--accent);
+  flex-shrink: 0;
+}
+.arasul-editor-tab.dirty .arasul-editor-tab-close { display: none; }
+.arasul-editor-tab.dirty:hover .arasul-editor-tab-dot { display: none; }
+.arasul-editor-tab.dirty:hover .arasul-editor-tab-close { display: flex; }
+
 .arasul-editor-tabs-spacer { flex: 1; }
 
 .arasul-editor-body {

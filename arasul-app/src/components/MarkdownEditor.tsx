@@ -231,6 +231,23 @@ export function MarkdownEditor({ filePath }: Props) {
     };
   }, [filePath]);
 
+  // Phase 5.9 (2026-05-11): emit dirty/clean events so EditorPane's tab
+  // strip can render an unsaved-changes dot. Fires whenever status flips.
+  // `dirty`, `saving`, `error` all signal unsaved content; `clean` and
+  // `saved` are clean. On unmount also emit a clean-state so the
+  // dot doesn't linger after the tab closes.
+  useEffect(() => {
+    const isDirty = status === "dirty" || status === "saving" || status === "error";
+    window.dispatchEvent(
+      new CustomEvent("arasul:editor-dirty", { detail: { path: filePath, dirty: isDirty } }),
+    );
+  }, [status, filePath]);
+  useEffect(() => () => {
+    window.dispatchEvent(
+      new CustomEvent("arasul:editor-dirty", { detail: { path: filePath, dirty: false } }),
+    );
+  }, [filePath]);
+
   // Phase 5.6 (2026-05-11): listen for jump-to-line events from
   // SearchPanel hits. Coerce the 1-based line number into a ProseMirror
   // doc-position by walking the doc's children (each block contributes
