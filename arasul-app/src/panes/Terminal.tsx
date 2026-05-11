@@ -5,6 +5,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { listen, type UnlistenFn } from "@tauri-apps/api/event";
 import "@xterm/xterm/css/xterm.css";
 import { getXTermTheme, XTERM_FONT_FAMILY, XTERM_FONT_SIZE } from "../lib/xtermTheme";
+import { useAppConfig } from "../hooks/useAppConfig";
 
 type PtyDataEvent = { data_b64: string };
 type PtyExitEvent = { status: number };
@@ -37,6 +38,13 @@ export function TerminalPane({
   onPtyId,
 }: TerminalPaneProps) {
   const containerRef = useRef<HTMLDivElement>(null);
+  // Phase 9.4 (2026-05-11): single source of truth for scrollback —
+  // useAppConfig().terminal.scrollback. RightPane.tsx reads the same
+  // value, so both surfaces stay in sync. xterm is created in a useEffect
+  // that closes over this value; when the user changes it in Settings,
+  // any newly-opened terminal gets the new size automatically. Existing
+  // terminals keep their original scrollback until reopen.
+  const scrollback = useAppConfig().terminal.scrollback ?? 10000;
 
   useEffect(() => {
     const container = containerRef.current;
@@ -47,7 +55,7 @@ export function TerminalPane({
       fontSize: XTERM_FONT_SIZE,
       theme: getXTermTheme(),
       cursorBlink: true,
-      scrollback: 10000,
+      scrollback,
       allowTransparency: true,
     });
     const fit = new FitAddon();
@@ -116,7 +124,7 @@ export function TerminalPane({
       unlistenFns.forEach((f) => f());
       term.dispose();
     };
-  }, [cmd, args, cwd, env, onExit, onPtyId]);
+  }, [cmd, args, cwd, env, onExit, onPtyId, scrollback]);
 
   return <div ref={containerRef} className="arasul-terminal" />;
 }

@@ -25,7 +25,10 @@
   gap: 2px;
   height: 30px;
   flex: 0 0 30px;
-  padding: 0 6px;
+  /* Phase 9.5 (2026-05-11): align tabs' horizontal padding with the
+   * .arasul-myhub-head row (both use --pane-pad-x), so the tab strip
+   * and the status row sit on the same vertical column. Was 6px. */
+  padding: 0 var(--pane-pad-x);
   border-bottom: var(--border);
   background: var(--bg-pane);
   overflow-x: auto;
@@ -189,7 +192,11 @@
   flex: 1;
   min-height: 0;
   position: relative;
-  padding: 6px 8px;
+  /* Phase 9.5: 8px inner padding is intentionally tighter than the
+   * tabs/head row (16px) — xterm canvas already renders dense glyphs,
+   * giving it 16px on every side wastes ~96px of screen width. The
+   * outer borders + neighbour panes provide the visual breathing room. */
+  padding: var(--space-3);
   box-sizing: border-box;
 }
 
@@ -248,6 +255,6 @@
   scrollbar-color: var(--border-subtle) transparent;
 }
 
-/* Symmetric padding inside the terminal body, replacing the audit's
-   asymmetric 6px 8px. Content no longer touches pane edges. */
-.arasul-myhub-body { padding: 8px; }
+/* Removed 2026-05-11 (Phase 9.5): used to override .arasul-myhub-body
+ * padding to 8px. The canonical rule above now uses --space-3 (8px)
+ * directly with a comment explaining why it's tighter than tabs/head. */

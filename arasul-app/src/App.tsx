@@ -130,6 +130,12 @@ function AppShell() {
         setPaletteOpen(false);
         setSearchOpen(false);
       } else if (mod && e.key.toLowerCase() === "k") {
+        // ⌘K — command palette. This shortcut is RESERVED at the
+        // window level (see .claude/rules/myhub-tui.md "Cmd+K is
+        // reserved" — Phase 9.7 / 2026-05-11). Any pane that hosts a
+        // PTY child (myhub-tui, Claude CLI, ad-hoc shells) MUST NOT
+        // bind ⌘K — keystrokes are intercepted here and never reach
+        // the embedded process.
         e.preventDefault();
         setPaletteOpen((p) => !p);
         setSettingsOpen(false);

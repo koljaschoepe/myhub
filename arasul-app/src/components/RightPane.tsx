@@ -311,14 +311,30 @@ function MyhubTerminal({ projectSlug, driveRoot, visible }: MyhubTerminalProps) 
     return () => window.removeEventListener("keydown", onKey);
   }, []);
 
-  // When the slot becomes visible after being hidden, the xterm size may
-  // have drifted (window resize while hidden) — re-fit on visibility.
+  // Phase 9.6 (2026-05-11): when the slot becomes visible after being
+  // hidden, the xterm size may have drifted (window resize fired while
+  // the slot was display:none and fit() couldn't read the layout). The
+  // earlier code used a 30ms setTimeout heuristic, which races on slow
+  // frames. Switch to ResizeObserver: when the container's bounding
+  // box is non-zero, fit() reads accurate dimensions. Fires once per
+  // visibility flip, then disconnects.
   useEffect(() => {
     if (!visible) return;
-    const id = window.setTimeout(() => {
+    const container = containerRef.current;
+    if (!container) return;
+    let fired = false;
+    const fitOnce = () => {
+      if (fired) return;
+      const r = container.getBoundingClientRect();
+      if (r.width === 0 || r.height === 0) return;
+      fired = true;
       try { fitRef.current?.fit(); } catch { /* ignore */ }
-    }, 30);
-    return () => window.clearTimeout(id);
+    };
+    fitOnce();  // maybe already sized
+    if (fired) return;
+    const ro = new ResizeObserver(fitOnce);
+    ro.observe(container);
+    return () => ro.disconnect();
   }, [visible]);
 
   const projectLabel = projectSlug ?? "no project";

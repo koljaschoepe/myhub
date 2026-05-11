@@ -79,6 +79,25 @@ Multi-step flows return `CommandResult(pending_handler=next_step, prompt="…")`
 
 For interactive *clarifications inside a single command*, prefer surfacing through the Tauri `AskUserQuestion` flow if the TUI is mounted in Arasul. Standalone TUI: stay with the wizard pattern (no AskUserQuestion equivalent yet).
 
+## Reserved Arasul host shortcuts
+
+When the TUI is mounted inside the Arasul right pane, the React shell
+intercepts keystrokes at the window level and they never reach the
+embedded process. **Don't bind these in `prompt_toolkit` key bindings**
+— users won't see your handler fire, and they'll think it's broken.
+
+- `⌘K` / `Ctrl+K` — opens the command palette (App.tsx).
+- `⌘L` — focuses the right pane (Phase 7.1 Cursor convention).
+- `⌘⇧L` — locks the drive.
+- `⌘P` / `⌘⇧P` — open file / project finder.
+- `⌘⇧F` — search across files.
+- `⌘,` / `⌘/` / `⌘;` — Settings / Shortcuts / Focus mode.
+- `⌘T` / `⌘W` / `⌘1..9` — terminal-tab management.
+- `Esc` — closes any open overlay before reaching the TUI.
+
+Other shortcuts (incl. `⌘B`, `⌘I`, `⌘U`, anything in the editor-only
+range) only fire when the editor pane has focus.
+
 ## What NOT to add
 
 - A workflow runner (Arasul has it; the TUI shells out to it via `/compile`, `/verify`, `/stats`).
