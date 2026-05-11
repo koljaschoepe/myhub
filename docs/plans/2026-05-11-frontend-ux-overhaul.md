@@ -110,7 +110,11 @@ Adopt Tailwind v4 (CSS-first) + shadcn/ui copy-in components + Radix UI primitiv
 - [x] 2.9 Sonner verified WCAG 4.1.3 compliant: container wraps the toast list in `aria-live="polite"` + `aria-relevant="additions text"` + `aria-atomic="false"`. This is the W3C-recommended status-message pattern — polite is correct because our `notify.ok`/`notify.err` are non-blocking. Set explicit `containerAriaLabel="Notifications"` in `main.tsx` for clearer SR announcements + documented the pattern in a long comment. — done 2026-05-11
 - [ ] 2.10 Install `@axe-core/react` + Playwright `axe-playwright`; add CI job that fails on new violations. Baseline existing.
 - [x] 2.11 **TUI language policy update** — decision 2026-05-11: myhub-tui MAY keep German UI strings. CLAUDE.md §4 + AGENTS.md "Conventions: Language" updated with the one-line exception. Code identifiers, comments, and commit messages remain English everywhere. — done 2026-05-11
-- [ ] 2.12 Add 6 missing test files for TUI command handlers: `test_project_commands.py`, `test_git_commands.py`, `test_ai_commands.py`, `test_brief.py`, `test_compile.py`, `test_verify.py`. Mock `subprocess.run`. Catches regressions in subprocess-heavy command surface.
+- [x] 2.12 Two new test files cover all 6 command-handler areas:
+      - `test_project_commands.py` — `/repos`, `/open` (by name / number / prefix), `/info`, `/new` wizard kickoff + shortcut. 11 tests.
+      - `test_git_commands.py` — `/git status/pull/push/log` with `subprocess.run` monkey-patched via a `_Stub` capture class. 11 tests covering happy + conflict + timeout + bad-subcommand paths.
+      - `test_subprocess_commands.py` — `/claude`, `/brief`, `/compile`, `/verify`. Covers no-binary fallbacks, success paths, timeouts. 13 tests.
+      TUI pytest now passes 72/72 (was 37). — done 2026-05-11
 - [x] 2.13 Verified `resolve_claude` already lives in `core/bin_resolve.py` (extraction was done at some earlier point — audit was stale). Both `commands/ai.py` and `commands/brief.py` import from there. Updated `.claude/rules/myhub-tui.md` to drop the outdated "currently duplicated" note. — done 2026-05-11
 
 ## Phase 3 — Shell, Tauri Chrome, Navigation Mechanics
@@ -240,7 +244,7 @@ Bridge the two halves so they stop feeling like two products glued together.
 - [ ] 11.2 Playwright e2e suite: unlock flow (correct + wrong + caps-lock), onboarding (all 4 steps + skip), open file → edit → save, command palette open + run.
 - [ ] 11.3 axe-core integrated into Playwright e2e: every test asserts no new violations.
 - [ ] 11.4 Visual regression: Chromatic or Percy against Storybook + key Playwright snapshots.
-- [ ] 11.5 TUI command handler tests (delivered in Phase 2.12 but verify pytest CI integration).
+- [x] 11.5 Tests landed under Phase 2.12 (same work, same files). pytest 72/72 passing locally; CI integration deferred (no GitHub Actions workflow exists yet for the Python side). — done 2026-05-11
 - [x] 11.6 New `tooling/check-bundle-size.mjs` script — reads `arasul-app/dist/assets/index-*.js`, gzips, fails when over the budget. Default 1750KB gzip (current size 1679KB gzip — comfortable headroom for the next few features). Override via `BUNDLE_BUDGET_KB=2000 pnpm bundle:check`. Wired as the `bundle:check` npm script. Long header comment in the file justifies the loose budget (USB-SSD app, cold-load not the bottleneck — the point is catching a single rogue dep adding a megabyte). — done 2026-05-11
 - [ ] 11.7 Lint rule: forbid hardcoded hex colors / pixel values outside `theme.css` + `tokens.md` (custom stylelint rule).
 
